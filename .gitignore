@@ -1,0 +1,11 @@
+build/
+dist/
+target/ 
+out/
+bin/
+**/__pycache__/
+venv/
+env/
+logs/
+users.db
+chroma_db/
