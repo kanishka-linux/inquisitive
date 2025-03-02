@@ -12,14 +12,13 @@ import PyPDF2
 import os
 import json
 from bs4 import BeautifulSoup
-from utils import save_token_to_storage, clear_token_from_storage, navigate_to
-from auth_page import logout_user
+from utils import save_token_to_storage, navigate_to
 
 
 class OllamaChatApp:
     def __init__(self):
         self.init_session_state()
-        # self.setup_streamlit_page()
+        self.setup_streamlit_page_layout()
         self.embeddings = OllamaEmbeddings(model="chroma/all-minilm-l6-v2-f32")
         self.persist_directory = "./chroma_db"
         self.load_or_create_vector_store()
@@ -61,13 +60,8 @@ class OllamaChatApp:
         if "ollama_model" not in st.session_state:
             st.session_state.ollama_modle = None
 
-    def setup_streamlit_page(self, layout):
-        st.set_page_config(
-            page_title="Document Q&A",
-            page_icon="📚",
-            layout=layout
-        )
-        st.title("Document Q&A System 📚")
+    def setup_streamlit_page_layout(self):
+        self.main_content, self.right_sidebar = st.columns([3, 1])
 
     def format_chat_history(self):
         """Format the entire chat history for context"""
@@ -124,7 +118,8 @@ class OllamaChatApp:
                 documents = [
                     Document(
                         page_content=text,
-                        metadata={"source": uploaded_file.name, "page": f"{i}"}
+                        metadata={"source": uploaded_file.name, "page": f"{i}",
+                                  "belongs_to": st.session_state.username}
                     ) for i, text in enumerate(texts)
                 ]
 
@@ -159,7 +154,8 @@ class OllamaChatApp:
                 documents = [
                     Document(
                         page_content=text,
-                        metadata={"source": source, "page": f"{i}"}
+                        metadata={"source": source, "page": f"{i}",
+                                  "belongs_to": st.session_state.username}
                     ) for i, text in enumerate(texts)
                 ]
 
@@ -211,7 +207,8 @@ class OllamaChatApp:
                         "source": doc.metadata['source'],
                         "page": f"{i}",
                         "title": title,
-                        "description": description
+                        "description": description,
+                        "belongs_to": st.session_state.username
                     }
                 ) for i, text in enumerate(texts)
             ]
@@ -312,7 +309,7 @@ Answer: """
     def display_chat_history(self):
         """Display chat messages from history"""
         for message in st.session_state.messages:
-            with main_content.chat_message(message["role"]):
+            with self.main_content.chat_message(message["role"]):
                 st.markdown(message["content"])
 
     def ollama_model_selected(self):
@@ -334,7 +331,7 @@ Answer: """
     async def process_response(self, prompt: str, context_aware: bool):
         """Process and display the model's response"""
         if not st.session_state.file_uploaded:
-            with main_content.chat_message("assistant"):
+            with self.main_content.chat_message("assistant"):
                 st.markdown(
                     "Please upload a document first before asking questions.")
                 st.session_state.messages.append({
@@ -358,34 +355,38 @@ Answer: """
                         # Exclude these sources
                         {"source": {"$nin": st.session_state.exclude_selected}},
                         # Include these sources
-                        {"source": {"$in": st.session_state.include_selected}}
+                        {"source": {"$in": st.session_state.include_selected}},
+                        # Include souces belonging to current users only
+                        {"belongs_to": {"$in": [st.session_state.username]}}
+
                     ]
                 }
             elif st.session_state.exclude_selected:
                 filter_dict = {
-                    "source": {"$nin": st.session_state.exclude_selected}
+                    "$and": [
+                        {"source": {"$nin": st.session_state.exclude_selected}},
+                        {"belongs_to": {"$in": [st.session_state.username]}}
+
+                    ]
                 }
             elif st.session_state.include_selected:
                 filter_dict = {
-                    "source": {"$in": st.session_state.include_selected}
+                    "$and": [
+                        {"source": {"$in": st.session_state.include_selected}},
+                        {"belongs_to": {"$in": [st.session_state.username]}}
+
+                    ]
                 }
-            if filter_dict:
-                docs = st.session_state.vector_store.similarity_search_with_relevance_scores(
-                    prompt,
-                    filter=filter_dict,
-                    k=st.session_state.context_window_size  # Retrieve more relevant chunks
-                )
-            elif st.session_state.selected_sources in ["All", None]:
-                docs = st.session_state.vector_store.similarity_search_with_relevance_scores(
-                    prompt,
-                    k=st.session_state.context_window_size  # Retrieve more relevant chunks
-                )
             else:
-                docs = st.session_state.vector_store.similarity_search_with_relevance_scores(
-                    prompt,
-                    filter={"source": st.session_state.selected_sources},
-                    k=st.session_state.context_window_size  # Retrieve more relevant chunks
-                )
+                filter_dict = {
+                    "belongs_to": {"$in": [st.session_state.username]}
+                }
+
+            docs = st.session_state.vector_store.similarity_search_with_relevance_scores(
+                prompt,
+                filter=filter_dict,
+                k=st.session_state.context_window_size  # Retrieve more relevant chunks
+            )
 
             if docs:
                 context = "\n\n".join(
@@ -393,7 +394,6 @@ Answer: """
                 # Prepare references for sidebar
                 references = []
 
-                sources = set()
                 for doc, score in docs:
                     source = doc.metadata.get("source", "N/A")
                     reference = {
@@ -404,27 +404,8 @@ Answer: """
                         "title": doc.metadata.get("title", source),
                     }
                     references.append(reference)
-                    sources.add(source)
 
-                with right_sidebar:
-                    source_list = ["All"] + list(sources)
-                    selected_source_index = 0
-                    try:
-                        selected_source_index = source_list.index(
-                            st.session_state.selected_sources)
-                    except ValueError:
-                        pass
-                    # st.selectbox(
-                    #    label='Select a reference for more focused conversation',
-                    #    options=source_list,
-                    #    on_change=self.on_selectbox_change,
-                    #    key="selectbox_key",
-                    #    index=selected_source_index
-                    # )
-
-                    # if st.session_state.selected_sources not in ["All", None]:
-                    #    st.info(f"selected reference: {st.session_state.selected_sources}", icon="ℹ️")
-                    # else:
+                with self.right_sidebar:
                     if st.session_state.include_selected:
                         st.info(
                             f"Included reference: {','.join(st.session_state.include_selected)}", icon="ℹ️")
@@ -446,7 +427,7 @@ Answer: """
                             if ref['text']:
                                 st.write(ref['text'])
 
-        with main_content.chat_message("assistant"):
+        with self.main_content.chat_message("assistant"):
             message_placeholder = st.empty()
             full_response = ""
 
@@ -477,10 +458,6 @@ Answer: """
 
         models = self.get_ollama_models()
 
-        global right_sidebar, main_content, tab1, tab2
-
-        # tab1, tab2 = st.tabs(["Q&A", "Documents"])
-        main_content, right_sidebar = st.columns([3, 1])
         with st.sidebar:
             # st.title("Document Q&A System 📚")
             # st.title("Inquisitive 📚")
@@ -597,7 +574,7 @@ Answer: """
                                    disabled=not st.session_state.file_uploaded):
             st.session_state.messages.append(
                 {"role": "user", "content": prompt})
-            with main_content.chat_message("user"):
+            with self.main_content.chat_message("user"):
                 st.markdown(prompt)
 
             st.session_state.is_generating = True
