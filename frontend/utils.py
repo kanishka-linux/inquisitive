@@ -2,6 +2,8 @@
 import json
 import requests
 import streamlit as st
+import base64
+import markdown
 from streamlit_js_eval import streamlit_js_eval
 
 # API configuration
@@ -81,3 +83,27 @@ def navigate_to(page):
     """Navigate to a specific page"""
     st.session_state.current_page = page
     st.rerun()
+
+
+def upload_file_to_api_server(uploaded_file):
+    headers = {
+        "Authorization": f"Bearer {st.session_state.token}"
+    }
+
+    # Create a files dictionary for the request
+    files = {"file": (uploaded_file.name, uploaded_file.getvalue())}
+
+    # Send the file to FastAPI
+    response = requests.post(
+        f"{API_URL}/file/upload",
+        headers=headers,
+        files=files
+    )
+
+    if response.status_code == 200:
+        result = response.json()
+        st.success("File uploaded successfully!")
+        return result["file_url"]
+    else:
+        st.error(f"Upload failed: {response.text}")
+        return uploaded_file.name
