@@ -1,5 +1,4 @@
 # backend/auth/dependencies.py
-from datetime import datetime
 from typing import Optional
 
 from fastapi import Depends, Request
@@ -10,16 +9,20 @@ from fastapi_users.authentication import (
     JWTStrategy,
 )
 from fastapi_users.db import SQLAlchemyUserDatabase
-from jose import jwt
+
 
 from backend.auth.models import User
 from backend.config import settings
 from backend.database import get_async_session
 
+from backend.core.logging import get_logger
+
 # Bearer transport for JWT
 bearer_transport = BearerTransport(tokenUrl="auth/jwt/login")
 
 # JWT strategy
+
+logger = get_logger()
 
 
 def get_jwt_strategy() -> JWTStrategy:
@@ -65,9 +68,8 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
 async def get_user_db(session=Depends(get_async_session)):
     yield SQLAlchemyUserDatabase(session, User)
 
+
 # Get user manager
-
-
 async def get_user_manager(user_db=Depends(get_user_db)):
     yield UserManager(user_db)
 
