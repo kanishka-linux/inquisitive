@@ -12,7 +12,15 @@ import PyPDF2
 import os
 import json
 from bs4 import BeautifulSoup
-from utils import save_token_to_storage, navigate_to
+import markdown
+import base64
+import aiohttp
+from utils import (
+    save_token_to_storage,
+    navigate_to,
+    upload_file_to_api_server,
+    API_URL
+)
 
 
 class OllamaChatApp:
@@ -61,7 +69,9 @@ class OllamaChatApp:
             st.session_state.ollama_modle = None
 
     def setup_streamlit_page_layout(self):
-        self.main_content, self.right_sidebar = st.columns([3, 1])
+        self.qna_tab, self.document_viewer = st.tabs(
+            ["Q&A", "Document Viewer"])
+        self.main_content, self.right_sidebar = self.qna_tab.columns([3, 1])
 
     def format_chat_history(self):
         """Format the entire chat history for context"""
@@ -103,6 +113,8 @@ class OllamaChatApp:
                 else:  # text file
                     text_content = uploaded_file.read().decode('utf-8')
 
+                file_url = upload_file_to_api_server(uploaded_file)
+
                 if not text_content:
                     st.error("No text content could be extracted from the file.")
                     return False
@@ -118,8 +130,13 @@ class OllamaChatApp:
                 documents = [
                     Document(
                         page_content=text,
-                        metadata={"source": uploaded_file.name, "page": f"{i}",
-                                  "belongs_to": st.session_state.username}
+                        metadata={
+                            "source": file_url,
+                            "page": f"{i}",
+                            "belongs_to": st.session_state.username,
+                            "filename": uploaded_file.name
+
+                        }
                     ) for i, text in enumerate(texts)
                 ]
 
@@ -298,10 +315,13 @@ Answer: """
             )
 
             async for chunk in stream:
+                if not st.session_state.is_generating:
+                    break
                 if 'message' in chunk:
                     content = chunk['message'].get('content', '')
                     if content:
                         yield content
+                        await asyncio.sleep(0)
 
         except Exception as e:
             yield f"\nError: {str(e)}"
@@ -402,6 +422,7 @@ Answer: """
                         "score": score,
                         "text": doc.page_content,
                         "title": doc.metadata.get("title", source),
+                        "filename": doc.metadata.get("filename", ""),
                     }
                     references.append(reference)
 
@@ -414,9 +435,13 @@ Answer: """
                             f"Excluded reference: {','.join(st.session_state.exclude_selected)}", icon="ℹ️")
 
                     for i, ref in enumerate(references, 1):
+                        if ref["filename"]:
+                            src = ref['filename']
+                        else:
+                            src = ref['source']
                         with st.expander(f"Reference {i} (Score: {ref['score']:.2f}, Page: {ref['page']})", expanded=(i == 1)):
                             st.radio(
-                                ref['source'],
+                                src,
                                 options=["Include", "Exclude"],
                                 key=f"radio_{i}",
                                 horizontal=True,
@@ -426,9 +451,13 @@ Answer: """
                             )
                             if ref['text']:
                                 st.write(ref['text'])
+                            if ref['filename']:
+                                st.button("View Document", key=f"btn_{i}", on_click=self.render_file_sync, args=(
+                                    ref['source'],))
 
         with self.main_content.chat_message("assistant"):
             message_placeholder = st.empty()
+            self.qna_tab.container().empty()
             full_response = ""
 
             if context_aware and not context:
@@ -444,6 +473,62 @@ Answer: """
 
             st.session_state.messages.append(
                 {"role": "assistant", "content": full_response})
+
+    def render_file_sync(self, file_url):
+        with self.document_viewer:
+            with st.spinner("Loading document..."):
+                st.session_state.is_generating = False
+                asyncio.run(self.render_file_async(file_url))
+
+    async def render_file_async(self, file_url):
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                f"{API_URL}{file_url}",
+                headers={"Authorization": f"Bearer {st.session_state.token}"}
+            ) as response:
+                if response.status != 200:
+                    self.qna_tab.error(
+                        f"Failed to fetch file: {response.status}")
+                    return
+
+                content_type = response.headers.get("content-type", "")
+                content = await response.read()
+
+                if content_type == "application/pdf":
+                    base64_pdf = base64.b64encode(content).decode('utf-8')
+                    pdf_display = f'<embed src="data:application/pdf;base64,{base64_pdf}" width="100%" height="800" type="application/pdf">'
+                    self.qna_tab.container(border=True).markdown(
+                        pdf_display, unsafe_allow_html=True)
+                elif content_type.startswith("image/"):
+                    self.qna_tab.container(border=True).image(content)
+
+                elif content_type == "text/markdown":
+                    try:
+                        markdown_text = content.decode(
+                            'utf-8', errors='replace')
+                        self.qna_tab.container(border=True).markdown(
+                            markdown_text, unsafe_allow_html=True)
+                    except:
+                        self.qna_tab.text_area(
+                            "Markdown Content", content, height=300)
+
+                elif content_type == "application/json":
+                    try:
+                        self.qna_tab.container(border=True).json(content)
+                    except:
+                        self.qna_tab.text_area(
+                            "JSON Content", content, height=300)
+
+                elif content_type.startswith("text/"):
+                    try:
+                        text = content.decode('utf-8', errors='replace')
+                        self.qna_tab.container(border=True).markdown(text)
+                    except Exception as e:
+                        self.qna_tab.error(f"Failed to render text file: {e}")
+
+                else:
+                    self.qna_tab.warning(
+                        f"Unsupported file type: {content_type}")
 
     def get_ollama_models(self):
         try:
@@ -597,8 +682,3 @@ Answer: """
         if st.session_state.authenticated:
             save_token_to_storage(st.session_state.token,
                                   st.session_state.username)
-
-
-# if __name__ == "__main__":
-#    app = OllamaChatApp()
-#    app.run()
