@@ -9,3 +9,4 @@ env/
 logs/
 users.db
 chroma_db/
+uploads/
