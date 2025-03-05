@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
-from utils import API_URL, navigate_to, save_token_to_storage, clear_token_from_storage
+from utils import navigate_to, save_token_to_storage, clear_token_from_storage
+from config import settings
 
 
 def login_user(email, password):
@@ -13,7 +14,7 @@ def login_user(email, password):
         }
 
         response = requests.post(
-            f"{API_URL}/auth/jwt/login",
+            f"{settings.API_URL}/auth/jwt/login",
             data=login_data  # Use data, not json for form data
         )
 
@@ -44,7 +45,7 @@ def register_user(email, password):
     """Register a new user with just email and password"""
     try:
         response = requests.post(
-            f"{API_URL}/auth/register",
+            f"{settings.API_URL}/auth/register",
             json={"email": email, "password": password}  # No username
         )
 

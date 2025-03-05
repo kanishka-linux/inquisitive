@@ -12,23 +12,23 @@ import PyPDF2
 import os
 import json
 from bs4 import BeautifulSoup
-import markdown
 import base64
 import aiohttp
 from utils import (
     save_token_to_storage,
     navigate_to,
-    upload_file_to_api_server,
-    API_URL
+    upload_file_to_api_server
 )
+
+from config import settings
 
 
 class OllamaChatApp:
     def __init__(self):
         self.init_session_state()
         self.setup_streamlit_page_layout()
-        self.embeddings = OllamaEmbeddings(model="chroma/all-minilm-l6-v2-f32")
-        self.persist_directory = "./chroma_db"
+        self.embeddings = OllamaEmbeddings(model=settings.EMBEDDINGS_MODLLE)
+        self.persist_directory = settings.PERSISTS_DIRECTORY
         self.load_or_create_vector_store()
 
     def load_or_create_vector_store(self):
@@ -66,11 +66,10 @@ class OllamaChatApp:
         if "include_selected" not in st.session_state:
             st.session_state.include_selected = []
         if "ollama_model" not in st.session_state:
-            st.session_state.ollama_modle = None
+            st.session_state.ollama_model = None
 
     def setup_streamlit_page_layout(self):
-        self.qna_tab, self.document_viewer = st.tabs(
-            ["Q&A", "Document Viewer"])
+        self.qna_tab = st
         self.main_content, self.right_sidebar = self.qna_tab.columns([3, 1])
 
     def format_chat_history(self):
@@ -209,7 +208,7 @@ class OllamaChatApp:
                 description = soup.find('meta', {'name': 'description'})
                 description = description['content'] if description else "No description"
                 text = soup.get_text()
-            except e as err:
+            except Exception as err:
                 print(err)
                 title = "No title"
                 description = "No description"
@@ -268,7 +267,7 @@ Question: {query}
 
 Answer: """
 
-    async def get_mistral_response(self, prompt: str, context: str = None, context_aware: bool = True) -> AsyncGenerator[str, None]:
+    async def get_llm_response(self, prompt: str, context: str = None, context_aware: bool = True) -> AsyncGenerator[str, None]:
         """Get streaming response from Mistral"""
         try:
             client = ollama.AsyncClient()
@@ -464,7 +463,7 @@ Answer: """
                 full_response = "I couldn't find relevant information in the uploaded document to answer your question."
                 message_placeholder.markdown(full_response)
             else:
-                async for response_chunk in self.get_mistral_response(prompt, context, context_aware):
+                async for response_chunk in self.get_llm_response(prompt, context, context_aware):
                     full_response += response_chunk
                     message_placeholder.markdown(full_response + "▌")
                     time.sleep(0.01)
@@ -475,7 +474,7 @@ Answer: """
                 {"role": "assistant", "content": full_response})
 
     def render_file_sync(self, file_url):
-        with self.document_viewer:
+        with self.main_content:
             with st.spinner("Loading document..."):
                 st.session_state.is_generating = False
                 asyncio.run(self.render_file_async(file_url))
@@ -483,7 +482,7 @@ Answer: """
     async def render_file_async(self, file_url):
         async with aiohttp.ClientSession() as session:
             async with session.get(
-                f"{API_URL}{file_url}",
+                f"{settings.API_URL}{file_url}",
                 headers={"Authorization": f"Bearer {st.session_state.token}"}
             ) as response:
                 if response.status != 200:
@@ -542,15 +541,14 @@ Answer: """
         """Main application loop"""
 
         models = self.get_ollama_models()
-
         with st.sidebar:
-            # st.title("Document Q&A System 📚")
-            # st.title("Inquisitive 📚")
+            st.title("Inquisitive 📚")
             if models:
+                st.session_state.ollama_model_selected = models[0]
                 selected_model = st.selectbox(
                     "Select an Ollama model",
                     options=models,
-                    index=None,
+                    index=0,
                     key='select_ollama_model',
                     placeholder="Choose a model...",
                     on_change=self.ollama_model_selected
@@ -577,7 +575,7 @@ Answer: """
             if input_method == "File Upload":
                 st.header("Document Upload")
                 uploaded_file = st.file_uploader(
-                    "Upload a file", type=['txt', 'pdf', "md", "json", "sh"])
+                    "Upload a file", type=settings.UPLOAD_FILE_TYPES)
                 if uploaded_file:
                     if st.button("Process Document"):
                         with st.spinner("Processing document..."):
@@ -597,16 +595,10 @@ Answer: """
                 st.subheader("Input Link")
                 input_url = st.text_input("Enter Website URL")
 
-                default_headers = {
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-                    "Accept-Language": "en-US,en;q=0.5"
-                }
-
                 input_headers = st.text_area(
                     "Headers (optional):",
                     height=150,
-                    value=json.dumps(default_headers, indent=2),
+                    value=json.dumps(settings.DEFAULT_HEADERS, indent=2),
                     placeholder="Paste or type hdrs in json format"
                 )
 
@@ -615,11 +607,11 @@ Answer: """
                         headers = json.loads(input_headers)
                     except:
                         st.error("Invalid JSON format for headers")
-                        headers = default_headers
+                        headers = settings.DEFAULT_HEADERS
 
                     with st.spinner("Processing..."):
                         success = asyncio.run(
-                            self.process_input_link(input_url, input_headers))
+                            self.process_input_link(input_url, headers))
                         if success:
                             st.success("✅ Done! Processed.")
                         else:

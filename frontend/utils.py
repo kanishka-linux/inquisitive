@@ -2,12 +2,8 @@
 import json
 import requests
 import streamlit as st
-import base64
-import markdown
 from streamlit_js_eval import streamlit_js_eval
-
-# API configuration
-API_URL = "http://localhost:8000"  # Your FastAPI server URL
+from config import settings
 
 
 def init_session_state():
@@ -63,11 +59,10 @@ def validate_token(token):
     """Validate the JWT token"""
     try:
         response = requests.post(
-            f"{API_URL}/auth/validate-token",
+            f"{settings.API_URL}/auth/validate-token",
             json={"token": token}
         )
 
-        print(response)
         if response.status_code == 200:
             data = response.json()
             print(data)
@@ -95,7 +90,7 @@ def upload_file_to_api_server(uploaded_file):
 
     # Send the file to FastAPI
     response = requests.post(
-        f"{API_URL}/file/upload",
+        f"{settings.API_URL}/file/upload",
         headers=headers,
         files=files
     )
