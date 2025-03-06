@@ -66,6 +66,7 @@ def logout_user():
     st.session_state.username = None  # This clears the email
     st.session_state.authenticated = False
     st.session_state.current_page = "login"
+    st.session_state.messages = []
 
     clear_token_from_storage()
 

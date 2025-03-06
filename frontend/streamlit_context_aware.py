@@ -555,14 +555,11 @@ Answer: """
                 )
             else:
                 st.info("Make sure Ollama is running on your machine.")
-            input_method = st.radio(
-                "Choose document input method:",
-                ["File Upload", "Text Input", "Add Link"]
-            )
             context_aware = st.radio(
                 "Choose discussion type:",
                 ["context aware", "non-context aware"]
             )
+
             input_context_window_size = st.number_input(
                 label='Enter Reference Window Size',
                 min_value=1,
@@ -572,8 +569,12 @@ Answer: """
                 format='%d'
             )
 
+            input_method = st.radio(
+                "Choose document input method:",
+                ["File Upload", "Text Input", "Add Link"]
+            )
+
             if input_method == "File Upload":
-                st.header("Document Upload")
                 uploaded_file = st.file_uploader(
                     "Upload a file", type=settings.UPLOAD_FILE_TYPES)
                 if uploaded_file:
@@ -668,7 +669,7 @@ Answer: """
             st.session_state.messages = []
             st.rerun()
 
-        if st.sidebar.button("Logout  ⬅️"):
+        if st.sidebar.button(f"Logout ({st.session_state.username}) ⬅️"):
             navigate_to("logout")
 
         if st.session_state.authenticated:
