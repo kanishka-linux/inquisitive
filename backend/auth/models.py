@@ -2,9 +2,11 @@
 from fastapi_users.db import SQLAlchemyBaseUserTable
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 
 from backend.database import Base
 from datetime import datetime
+import enum
 
 
 class User(SQLAlchemyBaseUserTable[int], Base):
@@ -19,6 +21,7 @@ class User(SQLAlchemyBaseUserTable[int], Base):
     is_verified = Column(Boolean, default=False, nullable=False)
 
     files = relationship("FileUpload", back_populates="owner")
+    links = relationship("Link", back_populates="owner")
 
 
 class FileUpload(Base):
@@ -34,3 +37,25 @@ class FileUpload(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
 
     owner = relationship("User", back_populates="files")
+
+
+class Link(Base):
+    __tablename__ = "links"
+
+    id = Column(Integer, primary_key=True, index=True)
+    url = Column(String, index=True)
+    title = Column(String)
+    favicon = Column(String)
+    status = Column(String)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, onupdate=func.now())
+    user_id = Column(Integer, ForeignKey("users.id"))
+
+    owner = relationship("User", back_populates="links")
+
+
+class ProcessingStatus(str, enum.Enum):
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    FINISHED = "finished"
+    FAILED = "failed"
