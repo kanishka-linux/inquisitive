@@ -1,7 +1,6 @@
 # backend/database.py
 from typing import AsyncGenerator
 
-from fastapi import Depends
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.ext.declarative import declarative_base
