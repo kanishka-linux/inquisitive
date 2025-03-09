@@ -102,3 +102,81 @@ def upload_file_to_api_server(uploaded_file):
     else:
         st.error(f"Upload failed: {response.text}")
         return uploaded_file.name
+
+
+def submit_link(link, custom_headers):
+    headers = {
+        "Authorization": f"Bearer {st.session_state.token}",
+        "Content-Type": "application/json"
+    }
+
+    data = {
+        "url": link,
+        "headers": custom_headers,
+    }
+
+    response = requests.post(
+        f"{settings.API_URL}/links/submit",
+        headers=headers,
+        json=data
+    )
+
+    if response.status_code == 202:
+        result = response.json()
+        st.success(f"{result}")
+        return True
+    else:
+        st.error("failed to submit link")
+        return False
+
+
+def submit_bulk_links(links, custom_headers):
+    headers = {
+        "Authorization": f"Bearer {st.session_state.token}",
+        "Content-Type": "application/json"
+    }
+
+    data = {
+        "urls": links,
+        "headers": custom_headers,
+    }
+
+    response = requests.post(
+        f"{settings.API_URL}/links/bulk",
+        headers=headers,
+        json=data
+    )
+
+    if response.status_code == 202:
+        result = response.json()
+        st.success(f"{result}")
+        return True
+    else:
+        st.error("failed to submit links")
+        return False
+
+
+def submit_recursive_crawl_link(link, custom_headers):
+    headers = {
+        "Authorization": f"Bearer {st.session_state.token}",
+        "Content-Type": "application/json"
+    }
+
+    data = {
+        "url": link,
+        "headers": custom_headers,
+    }
+
+    response = requests.post(
+        f"{settings.API_URL}/links/crawl",
+        headers=headers,
+        json=data
+    )
+
+    if response.status_code == 202:
+        result = response.json()
+        st.success(f"{result}")
+        return True
+    else:
+        st.error("failed to submit links")
+        return False
