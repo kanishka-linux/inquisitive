@@ -1,6 +1,7 @@
 # backend/config.py
 from pydantic_settings import BaseSettings
 from pathlib import Path
+from typing import Dict
 
 
 class Settings(BaseSettings):
@@ -22,6 +23,14 @@ class Settings(BaseSettings):
 
     UPLOAD_DIR: Path = Path("./uploads")
     UPLOAD_DIR.mkdir(exist_ok=True)
+    EMBEDDINGS_MODEL: str = "chroma/all-minilm-l6-v2-f32"
+
+    VECTOR_STORE_PERSISTS_DIRECTORY: str = "./chroma_db"
+    DEFAULT_HEADERS: Dict[str, str] = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5"
+    }
 
     class Config:
         env_file = ".env"
