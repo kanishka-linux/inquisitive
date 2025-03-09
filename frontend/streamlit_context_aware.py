@@ -18,7 +18,10 @@ import aiohttp
 from utils import (
     save_token_to_storage,
     navigate_to,
-    upload_file_to_api_server
+    upload_file_to_api_server,
+    submit_link,
+    submit_bulk_links,
+    submit_recursive_crawl_link
 )
 
 from config import settings
@@ -124,8 +127,15 @@ class OllamaChatApp:
                     r'(https?://[^"\'\s\n]+)(?:["\'\s\n]|$)', text_content)
                 filtered_links = list(filter(lambda link: not (
                     link.endswith("svg") or link.endswith("ico") or link.endswith("png")), links))
-                asyncio.run(self.process_input_links(
-                    filtered_links, settings.DEFAULT_HEADERS))
+
+                chunk_size = 500
+                chunked_urls = [
+                    filtered_links[i:i + chunk_size]
+                    for i in range(0, len(filtered_links), chunk_size)
+                ]
+
+                for batch in chunked_urls:
+                    submit_bulk_links(batch, settings.DEFAULT_HEADERS)
                 return True
             except Exception as e:
                 st.error(f"Error processing file: {str(e)}")
@@ -217,108 +227,6 @@ class OllamaChatApp:
                 st.error(f"Error processing file: {str(e)}")
                 return False
         return False
-
-    def bs4_extractor(self, html: str) -> str:
-        soup = BeautifulSoup(html, "lxml")
-        return re.sub(r"\n\n+", "\n\n", soup.text).strip()
-
-    async def crawl_recursive(self, url, headers):
-        loader = RecursiveUrlLoader(
-            url,
-            headers=headers,
-            continue_on_failure=True,
-            max_depth=2,
-            timeout=300,
-            use_async=True,
-            extractor=self.bs4_extractor
-        )
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=512,
-            chunk_overlap=50,
-            length_function=len,
-            separators=["\n\n", "\n", " ", ""]
-        )
-        # Load documents
-        async for doc in loader.alazy_load():
-            title = doc.metadata.get("title", "No title")
-            text = doc.page_content.strip()
-            if text:
-                st.success(f"processed: {title}")
-
-                texts = text_splitter.split_text(text)
-
-                documents = [
-                    Document(
-                        page_content=f"{title}\n\n{text}",
-                        metadata={
-                            "source": doc.metadata['source'],
-                            "page": f"{i}",
-                            "title": title,
-                            "belongs_to": st.session_state.username
-                        }
-                    ) for i, text in enumerate(texts)
-                ]
-
-                self.vector_store = Chroma.from_documents(
-                    embedding=self.embeddings,
-                    documents=documents,
-                    persist_directory=self.persist_directory
-                )
-                self.vector_store.persist()
-        return True
-
-    async def process_input_links(self, urls, headers):
-        if isinstance(urls, str):
-            urls = [urls]
-
-        chunk_size = 10
-        chunked_urls = [urls[i:i + chunk_size]
-                        for i in range(0, len(urls), chunk_size)]
-        loaders = []
-        for urls in chunked_urls:
-            loader = WebBaseLoader(
-                urls,
-                requests_kwargs={"headers": headers},
-                continue_on_failure=True
-            )
-            loader.requests_per_second = 2
-            loaders.append(loader)
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=512,
-            chunk_overlap=50,
-            length_function=len,
-            separators=["\n\n", "\n", " ", ""]
-        )
-        # Load documents
-        for loader in loaders:
-            async for doc in loader.alazy_load():
-                title = doc.metadata.get("title", "No title")
-                text = doc.page_content.strip()
-                text = re.sub(r"\n\n+", '\n', text)
-                if text:
-                    st.success(f"processed: {title}")
-
-                    texts = text_splitter.split_text(text)
-
-                    documents = [
-                        Document(
-                            page_content=f"{title}\n\n{text}",
-                            metadata={
-                                "source": doc.metadata['source'],
-                                "page": f"{i}",
-                                "title": title,
-                                "belongs_to": st.session_state.username
-                            }
-                        ) for i, text in enumerate(texts)
-                    ]
-
-                    self.vector_store = Chroma.from_documents(
-                        embedding=self.embeddings,
-                        documents=documents,
-                        persist_directory=self.persist_directory
-                    )
-                    self.vector_store.persist()
-        return True
 
     def extract_text_from_pdf(self, pdf_file):
         """Extract text from PDF file"""
@@ -704,8 +612,8 @@ Answer: """
                         headers = settings.DEFAULT_HEADERS
 
                     with st.spinner("Processing..."):
-                        success = asyncio.run(
-                            self.crawl_recursive(input_url, headers))
+                        success = submit_recursive_crawl_link(
+                            input_url, headers)
                         if success:
                             st.success("✅ Done! Processed.")
                         else:
@@ -729,8 +637,7 @@ Answer: """
                         headers = settings.DEFAULT_HEADERS
 
                     with st.spinner("Processing..."):
-                        success = asyncio.run(
-                            self.process_input_links(input_url, headers))
+                        success = submit_link(input_url, headers)
                         if success:
                             st.success("✅ Done! Processed.")
                         else:
