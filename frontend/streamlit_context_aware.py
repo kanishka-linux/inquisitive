@@ -7,10 +7,11 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import Chroma
 from langchain.embeddings import OllamaEmbeddings
 from langchain.schema import Document
-from langchain_community.document_loaders import WebBaseLoader
+from langchain_community.document_loaders import WebBaseLoader, RecursiveUrlLoader
 import PyPDF2
 import os
 import json
+import re
 from bs4 import BeautifulSoup
 import base64
 import aiohttp
@@ -67,6 +68,8 @@ class OllamaChatApp:
             st.session_state.include_selected = []
         if "ollama_model" not in st.session_state:
             st.session_state.ollama_model = None
+        if "ollama_model_selected" not in st.session_state:
+            st.session_state.ollama_model_selected = None
 
     def setup_streamlit_page_layout(self):
         self.qna_tab = st
@@ -101,6 +104,33 @@ class OllamaChatApp:
         formatted_messages.extend(st.session_state.messages)
 
         return formatted_messages
+
+    def process_uploaded_file_with_links(self, uploaded_file):
+        """Process uploaded file, extact links, fetch pages and store in vector database"""
+        import re
+        if uploaded_file is not None:
+            try:
+                # Extract text based on file type
+                if uploaded_file.type == "application/pdf":
+                    text_content = self.extract_text_from_pdf(uploaded_file)
+                else:  # text file
+                    text_content = uploaded_file.read().decode('utf-8')
+
+                if not text_content:
+                    st.error("No text content could be extracted from the file.")
+                    return False
+
+                links = re.findall(
+                    r'(https?://[^"\'\s\n]+)(?:["\'\s\n]|$)', text_content)
+                filtered_links = list(filter(lambda link: not (
+                    link.endswith("svg") or link.endswith("ico") or link.endswith("png")), links))
+                asyncio.run(self.process_input_links(
+                    filtered_links, settings.DEFAULT_HEADERS))
+                return True
+            except Exception as e:
+                st.error(f"Error processing file: {str(e)}")
+                return False
+        return False
 
     def process_uploaded_file(self, uploaded_file):
         """Process uploaded file (PDF or TXT) and store in vector database"""
@@ -188,12 +218,20 @@ class OllamaChatApp:
                 return False
         return False
 
-    async def process_input_link(self, url, headers):
-        loader = WebBaseLoader(
-            [url],
-            requests_kwargs={"headers": headers}
+    def bs4_extractor(self, html: str) -> str:
+        soup = BeautifulSoup(html, "lxml")
+        return re.sub(r"\n\n+", "\n\n", soup.text).strip()
+
+    async def crawl_recursive(self, url, headers):
+        loader = RecursiveUrlLoader(
+            url,
+            headers=headers,
+            continue_on_failure=True,
+            max_depth=2,
+            timeout=300,
+            use_async=True,
+            extractor=self.bs4_extractor
         )
-        loader.requests_per_second = 2
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=512,
             chunk_overlap=50,
@@ -202,39 +240,84 @@ class OllamaChatApp:
         )
         # Load documents
         async for doc in loader.alazy_load():
-            try:
-                soup = BeautifulSoup(doc.page_content, 'html.parser')
-                title = soup.title.string if soup.title else "No title"
-                description = soup.find('meta', {'name': 'description'})
-                description = description['content'] if description else "No description"
-                text = soup.get_text()
-            except Exception as err:
-                print(err)
-                title = "No title"
-                description = "No description"
-                text = "No Text"
+            title = doc.metadata.get("title", "No title")
+            text = doc.page_content.strip()
+            if text:
+                st.success(f"processed: {title}")
 
-            texts = text_splitter.split_text(text)
+                texts = text_splitter.split_text(text)
 
-            documents = [
-                Document(
-                    page_content=text,
-                    metadata={
-                        "source": doc.metadata['source'],
-                        "page": f"{i}",
-                        "title": title,
-                        "description": description,
-                        "belongs_to": st.session_state.username
-                    }
-                ) for i, text in enumerate(texts)
-            ]
+                documents = [
+                    Document(
+                        page_content=f"{title}\n\n{text}",
+                        metadata={
+                            "source": doc.metadata['source'],
+                            "page": f"{i}",
+                            "title": title,
+                            "belongs_to": st.session_state.username
+                        }
+                    ) for i, text in enumerate(texts)
+                ]
 
-            self.vector_store = Chroma.from_documents(
-                embedding=self.embeddings,
-                documents=documents,
-                persist_directory=self.persist_directory
+                self.vector_store = Chroma.from_documents(
+                    embedding=self.embeddings,
+                    documents=documents,
+                    persist_directory=self.persist_directory
+                )
+                self.vector_store.persist()
+        return True
+
+    async def process_input_links(self, urls, headers):
+        if isinstance(urls, str):
+            urls = [urls]
+
+        chunk_size = 10
+        chunked_urls = [urls[i:i + chunk_size]
+                        for i in range(0, len(urls), chunk_size)]
+        loaders = []
+        for urls in chunked_urls:
+            loader = WebBaseLoader(
+                urls,
+                requests_kwargs={"headers": headers},
+                continue_on_failure=True
             )
-            self.vector_store.persist()
+            loader.requests_per_second = 2
+            loaders.append(loader)
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=512,
+            chunk_overlap=50,
+            length_function=len,
+            separators=["\n\n", "\n", " ", ""]
+        )
+        # Load documents
+        for loader in loaders:
+            async for doc in loader.alazy_load():
+                title = doc.metadata.get("title", "No title")
+                text = doc.page_content.strip()
+                text = re.sub(r"\n\n+", '\n', text)
+                if text:
+                    st.success(f"processed: {title}")
+
+                    texts = text_splitter.split_text(text)
+
+                    documents = [
+                        Document(
+                            page_content=f"{title}\n\n{text}",
+                            metadata={
+                                "source": doc.metadata['source'],
+                                "page": f"{i}",
+                                "title": title,
+                                "belongs_to": st.session_state.username
+                            }
+                        ) for i, text in enumerate(texts)
+                    ]
+
+                    self.vector_store = Chroma.from_documents(
+                        embedding=self.embeddings,
+                        documents=documents,
+                        persist_directory=self.persist_directory
+                    )
+                    self.vector_store.persist()
         return True
 
     def extract_text_from_pdf(self, pdf_file):
@@ -449,7 +532,7 @@ Answer: """
                                 args=(ref['source'], f"radio_{i}",)
                             )
                             if ref['text']:
-                                st.write(ref['text'])
+                                st.markdown(ref['text'])
                             if ref['filename']:
                                 st.button("View Document", key=f"btn_{i}", on_click=self.render_file_sync, args=(
                                     ref['source'],))
@@ -513,7 +596,8 @@ Answer: """
 
                 elif content_type == "application/json":
                     try:
-                        self.qna_tab.container(border=True).json(content)
+                        text = content.decode('utf-8', errors='replace')
+                        self.qna_tab.container(border=True).json(text)
                     except:
                         self.qna_tab.text_area(
                             "JSON Content", content, height=300)
@@ -544,7 +628,8 @@ Answer: """
         with st.sidebar:
             st.title("Inquisitive 📚")
             if models:
-                st.session_state.ollama_model_selected = models[0]
+                if st.session_state.ollama_model_selected is None:
+                    st.session_state.ollama_model_selected = models[0]
                 selected_model = st.selectbox(
                     "Select an Ollama model",
                     options=models,
@@ -571,7 +656,8 @@ Answer: """
 
             input_method = st.radio(
                 "Choose document input method:",
-                ["File Upload", "Text Input", "Add Link"]
+                ["File Upload", "Text Input", "Add Link",
+                    "File with Links", "Recursive Crawl"]
             )
 
             if input_method == "File Upload":
@@ -586,12 +672,44 @@ Answer: """
                                     "Document processed and stored in vector database!")
                             else:
                                 st.error("Error processing document")
+            elif input_method == "File with Links":
+                uploaded_file = st.file_uploader(
+                    "Upload Any file containing links", type=settings.UPLOAD_FILE_TYPES)
+                if uploaded_file:
+                    if st.button("Process Document"):
+                        with st.spinner("Processing document..."):
+                            success = self.process_uploaded_file_with_links(
+                                uploaded_file)
+                            if success:
+                                st.success(
+                                    "Document processed and stored in vector database!")
+                            else:
+                                st.error("Error processing document")
+            elif input_method == "Recursive Crawl":
+                st.subheader("Input Link")
+                input_url = st.text_input("Enter Website URL")
 
-                # Display upload status
-                if st.session_state.file_uploaded:
-                    st.success("Document is loaded and ready for questions!")
-                else:
-                    st.warning("Please upload a document to begin.")
+                input_headers = st.text_area(
+                    "Headers (optional):",
+                    height=150,
+                    value=json.dumps(settings.DEFAULT_HEADERS, indent=2),
+                    placeholder="Paste or type hdrs in json format"
+                )
+
+                if input_url and input_headers and st.button("Process URL"):
+                    try:
+                        headers = json.loads(input_headers)
+                    except:
+                        st.error("Invalid JSON format for headers")
+                        headers = settings.DEFAULT_HEADERS
+
+                    with st.spinner("Processing..."):
+                        success = asyncio.run(
+                            self.crawl_recursive(input_url, headers))
+                        if success:
+                            st.success("✅ Done! Processed.")
+                        else:
+                            st.error("Error Processing")
             elif input_method == "Add Link":
                 st.subheader("Input Link")
                 input_url = st.text_input("Enter Website URL")
@@ -612,7 +730,7 @@ Answer: """
 
                     with st.spinner("Processing..."):
                         success = asyncio.run(
-                            self.process_input_link(input_url, headers))
+                            self.process_input_links(input_url, headers))
                         if success:
                             st.success("✅ Done! Processed.")
                         else:
@@ -648,8 +766,7 @@ Answer: """
         else:
             context_aware_search = False
 
-        if prompt := st.chat_input("Ask a question about the uploaded document",
-                                   disabled=not st.session_state.file_uploaded):
+        if prompt := st.chat_input("Ask a question about the uploaded document"):
             st.session_state.messages.append(
                 {"role": "user", "content": prompt})
             with self.main_content.chat_message("user"):
