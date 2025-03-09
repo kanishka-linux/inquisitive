@@ -1,7 +1,9 @@
 # backend/auth/schemas.py
-from typing import Optional
+from typing import Optional, List, Dict
 from fastapi_users import schemas
 from datetime import datetime
+from pydantic import HttpUrl, Field
+from backend.config import settings
 
 
 class UserRead(schemas.BaseUser[int]):
@@ -26,7 +28,7 @@ class FileUploadResponse(schemas.BaseModel):
     upload_time: datetime
 
     class Config:
-        from_attrributes = True
+        from_attributes = True
 
 
 class FileUploadDB(schemas.BaseModel):
@@ -40,4 +42,49 @@ class FileUploadDB(schemas.BaseModel):
     user_id: int
 
     class Config:
-        from_attrributes = True
+        from_attributes = True
+
+
+class LinkBase(schemas.BaseModel):
+    url: HttpUrl
+    headers: Optional[Dict[str, str]] = Field(
+        default=settings.DEFAULT_HEADERS, description="Custom request headers")
+
+
+class LinkCreate(LinkBase):
+    pass
+
+
+class LinkCrawl(LinkBase):
+    pass
+
+
+class LinkResponse(LinkBase):
+    id: int
+    title: Optional[str] = None
+    favicon: Optional[str] = None
+    status: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class LinkCrawlResponse(LinkBase):
+    status: str
+
+    class Config:
+        from_attributes = True
+
+
+class BulkLinkCreate(schemas.BaseModel):
+    urls: List[HttpUrl]
+    headers: Optional[Dict[str, str]] = Field(
+        default=settings.DEFAULT_HEADERS, description="Custom request headers to use for all URLs")
+
+
+class BulkLinkResponse(schemas.BaseModel):
+    links_added: int
+
+    class Config:
+        from_attributes = True
