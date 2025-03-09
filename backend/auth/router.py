@@ -16,13 +16,27 @@ from backend.auth.dependencies import (
     current_active_user,
     fastapi_users,
 )
-from backend.auth.models import User, FileUpload
+
+from backend.auth.url_processor import url_processing_queue
+from backend.auth.url_processor_recursive import recursive_url_processing_queue
+from backend.auth.models import (
+    User,
+    FileUpload,
+    ProcessingStatus,
+    Link
+)
 from backend.auth.schemas import (
     TokenPayload,
     UserCreate,
     UserRead,
     UserUpdate,
-    FileUploadResponse
+    FileUploadResponse,
+    LinkCreate,
+    LinkResponse,
+    BulkLinkCreate,
+    BulkLinkResponse,
+    LinkCrawl,
+    LinkCrawlResponse
 )
 from backend.auth.service import validate_jwt_token
 from backend.database import get_async_session
@@ -61,6 +75,7 @@ router.include_router(
 )
 
 file_router = APIRouter(tags=["files"])
+link_router = APIRouter(tags=["links"])
 
 # Custom token validation endpoint
 
@@ -170,3 +185,72 @@ async def get_file(
         filename=file_record.original_filename,
         media_type=file_record.content_type
     )
+
+
+# Link submit endpoint
+@link_router.post("/submit", response_model=LinkResponse, status_code=202)
+async def submit_link(
+    link: LinkCreate,
+    user: User = Depends(current_active_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    db_link = Link(
+        url=str(link.url),
+        user_id=user.id,
+        status=ProcessingStatus.PENDING
+    )
+    session.add(db_link)
+    await session.commit()
+    await session.refresh(db_link)
+
+    # Add to processing queue
+    await url_processing_queue.put((db_link.id, str(link.url), user.email, link.headers))
+
+    return db_link
+
+
+# Bulk Links submit end-point
+@link_router.post("/bulk", response_model=BulkLinkResponse, status_code=202)
+async def submit_links_bulk(
+    links_data: BulkLinkCreate,
+    user: User = Depends(current_active_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    # Process each URL
+    successful_links = []
+    failed_urls = []
+
+    for url in links_data.urls:
+        try:
+            # Create new link entry
+            db_link = Link(
+                url=str(url),
+                user_id=user.id,
+                status=ProcessingStatus.PENDING
+            )
+            session.add(db_link)
+            await session.commit()
+            await session.refresh(db_link)
+
+            # Add to processing queue with headers if provided
+            await url_processing_queue.put((db_link.id, str(url), user.email, links_data.headers))
+
+            successful_links.append(db_link)
+        except Exception as e:
+            failed_urls.append(str(url))
+
+    return BulkLinkResponse(links_added=len(successful_links))
+
+
+# Recursively Crawl the link
+@link_router.post("/crawl", response_model=LinkCrawlResponse, status_code=202)
+async def recursive_crawl(
+    links_data: LinkCrawl,
+    user: User = Depends(current_active_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+
+    url = links_data.url
+    await recursive_url_processing_queue.put((str(url), user, links_data.headers))
+
+    return LinkCrawlResponse(status="submitted", url=url)
