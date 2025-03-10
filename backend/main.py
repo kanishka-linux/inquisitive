@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.api.router import router as auth_router
-from backend.api.router import file_router, link_router
+from backend.api.router import file_router, link_router, document_router
 from backend.worker.url_processor import process_url_queue
 from backend.worker.url_processor_recursive import process_recursive_url_queue
 from backend.worker.process_uploaded_file import process_uploaded_file_queue
@@ -30,6 +30,7 @@ app.add_middleware(
 app.include_router(auth_router, prefix="/auth")
 app.include_router(file_router, prefix="/file")
 app.include_router(link_router, prefix="/links")
+app.include_router(document_router, prefix="/documents")
 
 
 @app.on_event("startup")
