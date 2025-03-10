@@ -112,9 +112,9 @@ def fetch_documents(include_selected, exclude_selected, window_size, username, p
         }
 
     docs = vector_store.similarity_search_with_relevance_scores(
-                prompt,
-                filter=filter_dict,
-                k=window_size  # Retrieve more relevant chunks
-            )
+        prompt,
+        filter=filter_dict,
+        k=window_size  # Retrieve more relevant chunks
+    )
 
     return docs

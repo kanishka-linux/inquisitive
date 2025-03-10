@@ -100,8 +100,6 @@ async def process_single_url(link_id, url, user_email, headers):
                         async with session.get(url, **request_kwargs) as response:
                             if response.status == 200:
                                 html_content = await response.text()
-
-                                
                                 # Get the base URL for resolving relative URLs
                                 base_url = get_base_url(str(response.url))
 
