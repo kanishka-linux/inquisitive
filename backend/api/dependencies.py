@@ -11,7 +11,7 @@ from fastapi_users.authentication import (
 from fastapi_users.db import SQLAlchemyUserDatabase
 
 
-from backend.auth.models import User
+from backend.api.models import User
 from backend.config import settings
 from backend.database import get_async_session
 

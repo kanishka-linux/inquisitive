@@ -1,6 +1,6 @@
 import asyncio
 
-from backend.auth.models import FileUpload, ProcessingStatus
+from backend.api.models import FileUpload, ProcessingStatus
 from backend.vector_store import add_uploaded_document_content_to_vector_store
 from backend.core.logging import get_logger
 from backend.database import async_session_maker

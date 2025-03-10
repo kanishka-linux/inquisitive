@@ -2,7 +2,7 @@ import asyncio
 from bs4 import BeautifulSoup
 import re
 
-from backend.auth.models import Link, ProcessingStatus
+from backend.api.models import Link, ProcessingStatus
 from backend.vector_store import add_link_content_to_vector_store
 from backend.core.logging import get_logger
 from urllib.parse import urlparse

@@ -2,7 +2,7 @@ import asyncio
 import aiohttp
 from bs4 import BeautifulSoup
 
-from backend.auth.models import Link, ProcessingStatus
+from backend.api.models import Link, ProcessingStatus
 from backend.vector_store import add_link_content_to_vector_store
 from backend.core.logging import get_logger
 from urllib.parse import urlparse
@@ -101,6 +101,7 @@ async def process_single_url(link_id, url, user_email, headers):
                             if response.status == 200:
                                 html_content = await response.text()
 
+                                
                                 # Get the base URL for resolving relative URLs
                                 base_url = get_base_url(str(response.url))
 

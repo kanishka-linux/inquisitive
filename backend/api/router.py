@@ -11,23 +11,23 @@ from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.auth.dependencies import (
+from backend.api.dependencies import (
     auth_backend,
     current_active_user,
     fastapi_users,
 )
 
-from backend.auth.url_processor import url_processing_queue
-from backend.auth.url_processor_recursive import recursive_url_processing_queue
-from backend.auth.process_uploaded_file import file_processor_queue
+from backend.worker.url_processor import url_processing_queue
+from backend.worker.url_processor_recursive import recursive_url_processing_queue
+from backend.worker.process_uploaded_file import file_processor_queue
 
-from backend.auth.models import (
+from backend.api.models import (
     User,
     FileUpload,
     ProcessingStatus,
     Link
 )
-from backend.auth.schemas import (
+from backend.api.schemas import (
     TokenPayload,
     UserCreate,
     UserRead,
@@ -40,7 +40,7 @@ from backend.auth.schemas import (
     LinkCrawl,
     LinkCrawlResponse
 )
-from backend.auth.service import validate_jwt_token
+from backend.api.service import validate_jwt_token
 from backend.database import get_async_session
 from backend.core.logging import get_logger
 
@@ -50,10 +50,8 @@ import uuid
 import shutil
 from pathlib import Path
 
-# import logging
 
 logger = get_logger()
-
 
 router = APIRouter()
 
