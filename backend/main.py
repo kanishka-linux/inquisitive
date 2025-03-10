@@ -2,11 +2,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.auth.router import router as auth_router
-from backend.auth.router import file_router, link_router
-from backend.auth.url_processor import process_url_queue
-from backend.auth.url_processor_recursive import process_recursive_url_queue
-from backend.auth.process_uploaded_file import process_uploaded_file_queue
+from backend.api.router import router as auth_router
+from backend.api.router import file_router, link_router
+from backend.worker.url_processor import process_url_queue
+from backend.worker.url_processor_recursive import process_recursive_url_queue
+from backend.worker.process_uploaded_file import process_uploaded_file_queue
 from backend.config import settings
 from backend.database import create_db_and_tables
 from backend.core.logging import setup_logging
