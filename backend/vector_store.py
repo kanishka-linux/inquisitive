@@ -73,3 +73,48 @@ def add_uploaded_document_content_to_vector_store(
 
     vector_store.add_documents(documents=documents)
     logger.info(f"processed: {file_name} with id={file_id}")
+
+
+def fetch_documents(include_selected, exclude_selected, window_size, username, prompt):
+
+    filter_dict = {}
+    if exclude_selected and include_selected:
+        filter_dict = {
+            "$and": [
+                # Exclude these sources
+                {"source": {"$nin": exclude_selected}},
+                # Include these sources
+                {"source": {"$in": include_selected}},
+                # Include souces belonging to current users only
+                {"belongs_to": {"$in": [username]}}
+
+            ]
+        }
+    elif exclude_selected:
+        filter_dict = {
+            "$and": [
+                {"source": {"$nin": exclude_selected}},
+                {"belongs_to": {"$in": [username]}}
+
+            ]
+        }
+    elif include_selected:
+        filter_dict = {
+            "$and": [
+                {"source": {"$in": include_selected}},
+                {"belongs_to": {"$in": [username]}}
+
+            ]
+        }
+    else:
+        filter_dict = {
+            "belongs_to": {"$in": [username]}
+        }
+
+    docs = vector_store.similarity_search_with_relevance_scores(
+                prompt,
+                filter=filter_dict,
+                k=window_size  # Retrieve more relevant chunks
+            )
+
+    return docs
