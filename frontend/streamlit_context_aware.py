@@ -4,15 +4,13 @@ import asyncio
 from typing import AsyncGenerator
 import time
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.vectorstores import Chroma
-from langchain.embeddings import OllamaEmbeddings
+from langchain_chroma import Chroma
+from langchain_ollama import OllamaEmbeddings
 from langchain.schema import Document
-from langchain_community.document_loaders import WebBaseLoader, RecursiveUrlLoader
 import PyPDF2
 import os
 import json
 import re
-from bs4 import BeautifulSoup
 import base64
 import aiohttp
 from utils import (
@@ -110,7 +108,6 @@ class OllamaChatApp:
 
     def process_uploaded_file_with_links(self, uploaded_file):
         """Process uploaded file, extact links, fetch pages and store in vector database"""
-        import re
         if uploaded_file is not None:
             try:
                 # Extract text based on file type
@@ -143,50 +140,11 @@ class OllamaChatApp:
         return False
 
     def process_uploaded_file(self, uploaded_file):
-        """Process uploaded file (PDF or TXT) and store in vector database"""
         if uploaded_file is not None:
             try:
-                # Extract text based on file type
-                if uploaded_file.type == "application/pdf":
-                    text_content = self.extract_text_from_pdf(uploaded_file)
-                else:  # text file
-                    text_content = uploaded_file.read().decode('utf-8')
-
-                file_url = upload_file_to_api_server(uploaded_file)
-
-                if not text_content:
-                    st.error("No text content could be extracted from the file.")
-                    return False
-
-                # Use RecursiveCharacterTextSplitter for better chunking
-                text_splitter = RecursiveCharacterTextSplitter(
-                    chunk_size=512,
-                    chunk_overlap=50,
-                    length_function=len,
-                    separators=["\n\n", "\n", " ", ""]
-                )
-                texts = text_splitter.split_text(text_content)
-                documents = [
-                    Document(
-                        page_content=text,
-                        metadata={
-                            "source": file_url,
-                            "page": f"{i}",
-                            "belongs_to": st.session_state.username,
-                            "filename": uploaded_file.name
-
-                        }
-                    ) for i, text in enumerate(texts)
-                ]
-
-                # Create or update vector store with persistence
-                self.vector_store = Chroma.from_documents(
-                    documents=documents,
-                    embedding=self.embeddings,
-                    persist_directory=self.persist_directory
-                )
-                self.vector_store.persist()  # Explicitly persist the database
-                st.session_state.file_uploaded = True
+                upload_file_to_api_server(uploaded_file)
+                st.success(
+                    f"File Name: {uploaded_file.name}")
                 return True
             except Exception as e:
                 st.error(f"Error processing file: {str(e)}")
@@ -221,7 +179,6 @@ class OllamaChatApp:
                     documents=documents,
                     persist_directory=self.persist_directory
                 )
-                self.vector_store.persist()  # Explicitly persist the database
                 return True
             except Exception as e:
                 st.error(f"Error processing file: {str(e)}")
@@ -353,7 +310,6 @@ Answer: """
         context = None
 
         if st.session_state.vector_store:
-            # Increase k for more context and add search_type
             if len(st.session_state.messages) > 1:
                 msgs = [msg["content"] for msg in st.session_state.messages]
                 msgstr = '\n'.join(msgs)
@@ -576,8 +532,7 @@ Answer: """
                         with st.spinner("Processing document..."):
                             success = self.process_uploaded_file(uploaded_file)
                             if success:
-                                st.success(
-                                    "Document processed and stored in vector database!")
+                                st.success("Document Accepted for Processing")
                             else:
                                 st.error("Error processing document")
             elif input_method == "File with Links":
@@ -589,8 +544,7 @@ Answer: """
                             success = self.process_uploaded_file_with_links(
                                 uploaded_file)
                             if success:
-                                st.success(
-                                    "Document processed and stored in vector database!")
+                                st.success("Document submitted for processing")
                             else:
                                 st.error("Error processing document")
             elif input_method == "Recursive Crawl":

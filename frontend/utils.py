@@ -95,7 +95,7 @@ def upload_file_to_api_server(uploaded_file):
         files=files
     )
 
-    if response.status_code == 200:
+    if response.status_code == 202:
         result = response.json()
         st.success("File uploaded successfully!")
         return result["file_url"]
