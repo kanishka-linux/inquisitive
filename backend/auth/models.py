@@ -32,6 +32,7 @@ class FileUpload(Base):
     original_filename = Column(String)
     file_path = Column(String)
     file_url = Column(String)
+    status = Column(String)
     content_type = Column(String)
     upload_time = Column(DateTime, default=datetime.utcnow)
     user_id = Column(Integer, ForeignKey("users.id"))

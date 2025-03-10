@@ -25,6 +25,7 @@ class TokenPayload(schemas.BaseModel):
 class FileUploadResponse(schemas.BaseModel):
     filename: str
     file_url: str
+    status: str
     upload_time: datetime
 
     class Config:
