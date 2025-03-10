@@ -89,3 +89,31 @@ class BulkLinkResponse(schemas.BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class DocumentSearchRequest(schemas.BaseModel):
+    prompt: str
+    include_sources: Optional[List[str]] = None
+    exclude_sources: Optional[List[str]] = None
+    window_size: Optional[int] = 5
+
+
+class DocumentMetadata(schemas.BaseModel):
+    source: str
+    page: str
+    title: Optional[str] = None
+    belongs_to: str
+    link_id: Optional[str] = None
+    file_id: Optional[str] = None
+    filename: Optional[str] = None
+
+
+class DocumentResult(schemas.BaseModel):
+    page_content: str
+    metadata: DocumentMetadata
+    score: float
+
+
+class DocumentSearchResponse(schemas.BaseModel):
+    documents: List[DocumentResult]
+    count: int
