@@ -6,6 +6,7 @@ from backend.auth.router import router as auth_router
 from backend.auth.router import file_router, link_router
 from backend.auth.url_processor import process_url_queue
 from backend.auth.url_processor_recursive import process_recursive_url_queue
+from backend.auth.process_uploaded_file import process_uploaded_file_queue
 from backend.config import settings
 from backend.database import create_db_and_tables
 from backend.core.logging import setup_logging
@@ -36,6 +37,7 @@ def on_startup():
     create_db_and_tables()
     asyncio.create_task(process_url_queue())
     asyncio.create_task(process_recursive_url_queue())
+    asyncio.create_task(process_uploaded_file_queue())
 
 # Root endpoint
 

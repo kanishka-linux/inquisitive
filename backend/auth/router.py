@@ -19,6 +19,8 @@ from backend.auth.dependencies import (
 
 from backend.auth.url_processor import url_processing_queue
 from backend.auth.url_processor_recursive import recursive_url_processing_queue
+from backend.auth.process_uploaded_file import file_processor_queue
+
 from backend.auth.models import (
     User,
     FileUpload,
@@ -104,7 +106,7 @@ async def get_user_by_username(
 
 
 # File upload endpoint
-@file_router.post("/upload", response_model=FileUploadResponse)
+@file_router.post("/upload", response_model=FileUploadResponse, status_code=202)
 async def upload_file(
     file: UploadFile = File(...),
     user: User = Depends(current_active_user),
@@ -129,6 +131,7 @@ async def upload_file(
         original_filename=file.filename,
         file_path=str(file_path),
         file_url=file_url,
+        status=ProcessingStatus.PENDING,
         content_type=file.content_type,
         user_id=user.id
     )
@@ -137,10 +140,12 @@ async def upload_file(
     await session.commit()
     await session.refresh(db_file)
 
+    await file_processor_queue.put((file_path, unique_filename, file_url, db_file.id, user.email))
     # Return the file URL to the client
     return {
         "filename": file.filename,
         "file_url": file_url,
+        "status": db_file.status,
         "upload_time": db_file.upload_time
     }
 

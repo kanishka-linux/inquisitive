@@ -1,9 +1,10 @@
-from langchain.vectorstores import Chroma
-from langchain.embeddings import OllamaEmbeddings
+from langchain_chroma import Chroma
+from langchain_ollama import OllamaEmbeddings
 from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from backend.config import settings
 from backend.core.logging import get_logger
+from backend.core.utils import extract_text_from_pdf, is_file_pdf, read_text_file_content
 
 logger = get_logger()
 
@@ -50,3 +51,35 @@ def add_link_content_to_vector_store(
     )
 
     logger.info(f"processed: {source} with {title}")
+
+
+def add_uploaded_document_content_to_vector_store(
+        file_path, file_name, file_url, file_id, username):
+
+    if is_file_pdf(file_path):
+        text_content = extract_text_from_pdf(file_path)
+    else:
+        text_content = read_text_file_content(file_path)
+
+    texts = text_splitter.split_text(text_content)
+
+    documents = [
+        Document(
+            page_content=text,
+            metadata={
+                "source": file_url,
+                "page": f"{i}",
+                "filename": file_name,
+                "belongs_to": username,
+                "file_id": f"{file_id}"
+            }
+        ) for i, text in enumerate(texts)
+    ]
+
+    Chroma.from_documents(
+        embedding=embeddings,
+        documents=documents,
+        persist_directory=persist_directory
+    )
+
+    logger.info(f"processed: {file_name} with id={file_id}")
