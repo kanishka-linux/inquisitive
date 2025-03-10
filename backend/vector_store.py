@@ -44,12 +44,7 @@ def add_link_content_to_vector_store(
         ) for i, text in enumerate(texts)
     ]
 
-    Chroma.from_documents(
-        embedding=embeddings,
-        documents=documents,
-        persist_directory=persist_directory
-    )
-
+    vector_store.add_documents(documents=documents)
     logger.info(f"processed: {source} with {title}")
 
 
@@ -76,10 +71,5 @@ def add_uploaded_document_content_to_vector_store(
         ) for i, text in enumerate(texts)
     ]
 
-    Chroma.from_documents(
-        embedding=embeddings,
-        documents=documents,
-        persist_directory=persist_directory
-    )
-
+    vector_store.add_documents(documents=documents)
     logger.info(f"processed: {file_name} with id={file_id}")
