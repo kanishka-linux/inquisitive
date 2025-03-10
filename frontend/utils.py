@@ -180,3 +180,32 @@ def submit_recursive_crawl_link(link, custom_headers):
     else:
         st.error("failed to submit links")
         return False
+
+
+def fetch_documents(prompt):
+    headers = {
+        "Authorization": f"Bearer {st.session_state.token}",
+        "Content-Type": "application/json"
+    }
+
+    data = {
+        "include_sources": st.session_state.include_selected,
+        "exclude_sources": st.session_state.exclude_selected,
+        "window_size": st.session_state.context_window_size,
+        "prompt": prompt,
+    }
+
+    response = requests.post(
+        f"{settings.API_URL}/documents/search",
+        headers=headers,
+        json=data
+    )
+
+    docs = []
+    if response.status_code == 200:
+        result = response.json()
+        docs = result["documents"]
+
+    print(docs)
+
+    return docs

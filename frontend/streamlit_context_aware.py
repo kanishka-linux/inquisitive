@@ -19,7 +19,8 @@ from utils import (
     upload_file_to_api_server,
     submit_link,
     submit_bulk_links,
-    submit_recursive_crawl_link
+    submit_recursive_crawl_link,
+    fetch_documents
 )
 
 from config import settings
@@ -296,110 +297,63 @@ Answer: """
             st.session_state.exclude_selected.append(source)
 
     async def process_response(self, prompt: str, context_aware: bool):
-        """Process and display the model's response"""
-        if not st.session_state.file_uploaded:
-            with self.main_content.chat_message("assistant"):
-                st.markdown(
-                    "Please upload a document first before asking questions.")
-                st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": "Please upload a document first before asking questions."
-                })
-            return
 
         context = None
 
-        if st.session_state.vector_store:
-            if len(st.session_state.messages) > 1:
-                msgs = [msg["content"] for msg in st.session_state.messages]
-                msgstr = '\n'.join(msgs)
-                prompt = msgstr + "\n" + prompt
-            filter_dict = {}
-            if st.session_state.exclude_selected and st.session_state.include_selected:
-                filter_dict = {
-                    "$and": [
-                        # Exclude these sources
-                        {"source": {"$nin": st.session_state.exclude_selected}},
-                        # Include these sources
-                        {"source": {"$in": st.session_state.include_selected}},
-                        # Include souces belonging to current users only
-                        {"belongs_to": {"$in": [st.session_state.username]}}
+        if len(st.session_state.messages) > 1:
+            msgs = [msg["content"] for msg in st.session_state.messages]
+            msgstr = '\n'.join(msgs)
+            prompt = msgstr + "\n" + prompt
 
-                    ]
+        docs = fetch_documents(prompt)
+
+        if docs:
+            context = "\n\n".join(
+                [doc["page_content"] for doc in docs])
+            # Prepare references for sidebar
+            references = []
+
+            for doc in docs:
+                metadata = doc["metadata"]
+                source = metadata.get("source", "N/A")
+                reference = {
+                    "source": source,
+                    "page": metadata.get("page", "N/A"),
+                    "score": doc["score"],
+                    "text": doc["page_content"],
+                    "title": metadata.get("title", source),
+                    "filename": metadata.get("filename", ""),
                 }
-            elif st.session_state.exclude_selected:
-                filter_dict = {
-                    "$and": [
-                        {"source": {"$nin": st.session_state.exclude_selected}},
-                        {"belongs_to": {"$in": [st.session_state.username]}}
+                references.append(reference)
 
-                    ]
-                }
-            elif st.session_state.include_selected:
-                filter_dict = {
-                    "$and": [
-                        {"source": {"$in": st.session_state.include_selected}},
-                        {"belongs_to": {"$in": [st.session_state.username]}}
+            with self.right_sidebar:
+                if st.session_state.include_selected:
+                    st.info(
+                        f"Included reference: {','.join(st.session_state.include_selected)}", icon="ℹ️")
+                if st.session_state.exclude_selected:
+                    st.info(
+                        f"Excluded reference: {','.join(st.session_state.exclude_selected)}", icon="ℹ️")
 
-                    ]
-                }
-            else:
-                filter_dict = {
-                    "belongs_to": {"$in": [st.session_state.username]}
-                }
-
-            docs = st.session_state.vector_store.similarity_search_with_relevance_scores(
-                prompt,
-                filter=filter_dict,
-                k=st.session_state.context_window_size  # Retrieve more relevant chunks
-            )
-
-            if docs:
-                context = "\n\n".join(
-                    [doc.page_content for doc, score in docs])
-                # Prepare references for sidebar
-                references = []
-
-                for doc, score in docs:
-                    source = doc.metadata.get("source", "N/A")
-                    reference = {
-                        "source": source,
-                        "page": doc.metadata.get("page", "N/A"),
-                        "score": score,
-                        "text": doc.page_content,
-                        "title": doc.metadata.get("title", source),
-                        "filename": doc.metadata.get("filename", ""),
-                    }
-                    references.append(reference)
-
-                with self.right_sidebar:
-                    if st.session_state.include_selected:
-                        st.info(
-                            f"Included reference: {','.join(st.session_state.include_selected)}", icon="ℹ️")
-                    if st.session_state.exclude_selected:
-                        st.info(
-                            f"Excluded reference: {','.join(st.session_state.exclude_selected)}", icon="ℹ️")
-
-                    for i, ref in enumerate(references, 1):
-                        if ref["filename"]:
-                            src = ref['filename']
-                        else:
-                            src = ref['source']
-                        with st.expander(f"Reference {i} (Score: {ref['score']:.2f}, Page: {ref['page']})", expanded=(i == 1)):
-                            st.radio(
-                                src,
-                                options=["Include", "Exclude"],
-                                key=f"radio_{i}",
-                                horizontal=True,
-                                index=None,
-                                on_change=self.handle_selection_change,
-                                args=(ref['source'], f"radio_{i}",)
-                            )
-                            if ref['text']:
-                                st.markdown(ref['text'])
-                            if ref['filename']:
-                                st.button("View Document", key=f"btn_{i}", on_click=self.render_file_sync, args=(
-                                    ref['source'],))
+                for i, ref in enumerate(references, 1):
+                    if ref["filename"]:
+                        src = ref['filename']
+                    else:
+                        src = ref['source']
+                    with st.expander(f"Reference {i} (Score: {ref['score']:.2f}, Page: {ref['page']})", expanded=(i == 1)):
+                        st.radio(
+                            src,
+                            options=["Include", "Exclude"],
+                            key=f"radio_{i}",
+                            horizontal=True,
+                            index=None,
+                            on_change=self.handle_selection_change,
+                            args=(ref['source'], f"radio_{i}",)
+                        )
+                        if ref['text']:
+                            st.markdown(ref['text'])
+                        if ref['filename']:
+                            st.button("View Document", key=f"btn_{i}", on_click=self.render_file_sync, args=(
+                                ref['source'],))
 
         with self.main_content.chat_message("assistant"):
             message_placeholder = st.empty()
@@ -645,6 +599,7 @@ Answer: """
 
         if st.sidebar.button("Clear Chat"):
             st.session_state.messages = []
+            st.cache_resource.clear()
             st.rerun()
 
         if st.sidebar.button(f"Logout ({st.session_state.username}) ⬅️"):
