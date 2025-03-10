@@ -20,6 +20,7 @@ from backend.api.dependencies import (
 from backend.worker.url_processor import url_processing_queue
 from backend.worker.url_processor_recursive import recursive_url_processing_queue
 from backend.worker.process_uploaded_file import file_processor_queue
+from backend.vector_store import fetch_documents
 
 from backend.api.models import (
     User,
@@ -38,7 +39,11 @@ from backend.api.schemas import (
     BulkLinkCreate,
     BulkLinkResponse,
     LinkCrawl,
-    LinkCrawlResponse
+    LinkCrawlResponse,
+    DocumentSearchResponse,
+    DocumentSearchRequest,
+    DocumentResult,
+    DocumentMetadata
 )
 from backend.api.service import validate_jwt_token
 from backend.database import get_async_session
@@ -76,6 +81,7 @@ router.include_router(
 
 file_router = APIRouter(tags=["files"])
 link_router = APIRouter(tags=["links"])
+document_router = APIRouter(tags=["documents"])
 
 # Custom token validation endpoint
 
@@ -257,3 +263,39 @@ async def recursive_crawl(
     await recursive_url_processing_queue.put((str(url), user, links_data.headers))
 
     return LinkCrawlResponse(status="submitted", url=url)
+
+
+@document_router.post("/search", response_model=DocumentSearchResponse, status_code=200)
+async def search_documents(
+    request: DocumentSearchRequest,
+    user: User = Depends(current_active_user),
+):
+    try:
+
+        docs = fetch_documents(
+            request.include_sources,
+            request.exclude_sources,
+            request.window_size,
+            user.email,
+            request.prompt
+        )
+        # Format results
+        results = []
+        for doc, score in docs:
+            results.append(
+                DocumentResult(
+                    page_content=doc.page_content,
+                    metadata=DocumentMetadata(**doc.metadata),
+                    score=score
+                )
+            )
+
+        return DocumentSearchResponse(
+            documents=results,
+            count=len(results)
+        )
+
+    except Exception as e:
+        logger.error(f"Error searching documents: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error searching documents: {str(e)}")
