@@ -22,6 +22,7 @@ class User(SQLAlchemyBaseUserTable[int], Base):
 
     files = relationship("FileUpload", back_populates="owner")
     links = relationship("Link", back_populates="owner")
+    notes = relationship("Note", back_populates="owner")
 
 
 class FileUpload(Base):
@@ -53,6 +54,22 @@ class Link(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
 
     owner = relationship("User", back_populates="links")
+
+
+class Note(Base):
+    __tablename__ = "notes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    url = Column(String, index=True)
+    title = Column(String)
+    filename = Column(String)
+    file_path = Column(String)
+    status = Column(String)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, onupdate=func.now())
+    user_id = Column(Integer, ForeignKey("users.id"))
+
+    owner = relationship("User", back_populates="notes")
 
 
 class ProcessingStatus(str, enum.Enum):
