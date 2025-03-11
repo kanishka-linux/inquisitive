@@ -104,6 +104,33 @@ def upload_file_to_api_server(uploaded_file):
         return uploaded_file.name
 
 
+def upload_note_to_api_server(content, title):
+    headers = {
+        "Authorization": f"Bearer {st.session_state.token}",
+        "Content-Type": "application/json"
+    }
+
+    data = {
+        "content": content,
+        "title": title
+    }
+
+    # Send the note to FastAPI
+    response = requests.post(
+        f"{settings.API_URL}/file/note",
+        headers=headers,
+        json=data
+    )
+
+    if response.status_code == 202:
+        result = response.json()
+        st.success("Note Submitted successfully!")
+        return result["url"]
+    else:
+        st.error(f"Upload failed: {response.text}")
+        return title
+
+
 def submit_link(link, custom_headers):
     headers = {
         "Authorization": f"Bearer {st.session_state.token}",
