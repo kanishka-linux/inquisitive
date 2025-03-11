@@ -5,10 +5,10 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from backend.config import settings
 from backend.core.logging import get_logger
 from backend.core.utils import (
-        extract_text_from_pdf,
-        is_file_pdf,
-        read_text_file_content
-    )
+    extract_text_from_pdf,
+    is_file_pdf,
+    read_text_file_content
+)
 from backend.api.models import SourceType
 
 logger = get_logger()

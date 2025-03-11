@@ -185,8 +185,8 @@ async def create_note(
     await session.refresh(db_note)
 
     await file_processor_queue.put(
-            (file_path, filename, file_url, db_note.id, user.email, "note")
-        )
+        (file_path, filename, file_url, db_note.id, user.email, "note")
+    )
     # Return the file URL to the client
     return NoteCreateResponse(
         id=db_note.id,
