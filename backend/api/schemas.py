@@ -96,6 +96,7 @@ class DocumentSearchRequest(schemas.BaseModel):
     include_sources: Optional[List[str]] = None
     exclude_sources: Optional[List[str]] = None
     window_size: Optional[int] = 5
+    source_type: Optional[str] = None
 
 
 class DocumentMetadata(schemas.BaseModel):
