@@ -36,7 +36,7 @@ async def process_url_queue():
                 link_id, url, user_email, headers))
 
             # Mark the queue task as done
-            url_processing_queue.task_done()
+            # url_processing_queue.task_done()
 
         except Exception as e:
             logger.error(f"Error in URL processing queue: {str(e)}")
@@ -129,6 +129,8 @@ async def process_single_url(link_id, url, user_email, headers):
 
                 # Commit changes
                 await db.commit()
+
+                url_processing_queue.task_done()
 
             except Exception as e:
                 logger.error(

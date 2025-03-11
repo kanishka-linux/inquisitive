@@ -19,14 +19,14 @@ async def process_uploaded_file_queue():
     while True:
         try:
             # Get an item from the queue
-            file_path, file_name, file_url, file_id, user_email, input_type = await file_processor_queue.get()
+            file_path, file_name, file_url, file_id, user_email, source_type = await file_processor_queue.get()
 
             # Process the URL in a separate task to avoid blocking the queue
             asyncio.create_task(process_file(
-                file_path, file_name, file_url, file_id, user_email, input_type))
+                file_path, file_name, file_url, file_id, user_email, source_type))
 
             # Mark the queue task as done
-            file_processor_queue.task_done()
+            # file_processor_queue.task_done()
 
         except Exception as e:
             logger.error(f"Error in URL processing queue: {str(e)}")
@@ -34,7 +34,13 @@ async def process_uploaded_file_queue():
 
 
 # Background task to process URLs from the queue
-async def process_file(file_path, file_name, file_url, file_id, user_email, input_type):
+async def process_file(
+        file_path,
+        file_name,
+        file_url,
+        file_id,
+        user_email,
+        source_type):
     # Acquire the semaphore to limit concurrency
     async with concurrency_limit:
         async with async_session_maker() as db:
@@ -48,7 +54,7 @@ async def process_file(file_path, file_name, file_url, file_id, user_email, inpu
                     user_email
                 )
 
-                if input_type == "note":
+                if source_type == "note":
                     stmt = select(Note).where(Note.id == file_id)
                 else:
                     stmt = select(FileUpload).where(FileUpload.id == file_id)
@@ -57,6 +63,8 @@ async def process_file(file_path, file_name, file_url, file_id, user_email, inpu
 
                 file_row.status = ProcessingStatus.FINISHED
                 await db.commit()
+
+                file_processor_queue.task_done()
                 logger.info(
                     f"Successfully processed File: {file_name} for user {user_email}")
             except Exception as e:

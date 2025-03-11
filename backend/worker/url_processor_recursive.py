@@ -35,7 +35,7 @@ async def process_recursive_url_queue():
             asyncio.create_task(crawl_url(url, user, headers))
 
             # Mark the queue task as done
-            recursive_url_processing_queue.task_done()
+            # recursive_url_processing_queue.task_done()
 
         except Exception as e:
             logger.error(f"Error in URL processing queue: {str(e)}")
@@ -77,6 +77,8 @@ async def crawl_url(url, user, headers):
                     await asyncio.to_thread(add_link_content_to_vector_store, text, source, title, db_link.id, user.email)
                     db_link.status = ProcessingStatus.FINISHED
                     await db.commit()
+
+                    recursive_url_processing_queue.task_done()
                     logger.info(
                         f"Successfully processed URL {source} for user {user.email}")
 
