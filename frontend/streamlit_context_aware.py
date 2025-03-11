@@ -3,12 +3,8 @@ import ollama
 import asyncio
 from typing import AsyncGenerator
 import time
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_chroma import Chroma
 from langchain_ollama import OllamaEmbeddings
-from langchain.schema import Document
 import PyPDF2
-import os
 import json
 import re
 import base64
@@ -20,7 +16,8 @@ from utils import (
     submit_link,
     submit_bulk_links,
     submit_recursive_crawl_link,
-    fetch_documents
+    fetch_documents,
+    upload_note_to_api_server
 )
 
 from config import settings
@@ -32,32 +29,12 @@ class OllamaChatApp:
         self.setup_streamlit_page_layout()
         self.embeddings = OllamaEmbeddings(model=settings.EMBEDDINGS_MODLLE)
         self.persist_directory = settings.PERSISTS_DIRECTORY
-        self.load_or_create_vector_store()
-
-    def load_or_create_vector_store(self):
-        """Load existing vector store or create new one"""
-        try:
-            if os.path.exists(self.persist_directory):
-                self.vector_store = Chroma(
-                    persist_directory=self.persist_directory,
-                    embedding_function=self.embeddings
-                )
-                st.session_state.file_uploaded = True
-                st.session_state.vector_store = self.vector_store
-            else:
-                self.vector_store = None
-                st.session_state.vector_store = self.vector_store
-        except Exception as e:
-            st.error(f"Error loading vector store: {str(e)}")
-            self.vector_store = None
 
     def init_session_state(self):
         if 'messages' not in st.session_state:
             st.session_state.messages = []
         if 'is_generating' not in st.session_state:
             st.session_state.is_generating = False
-        if 'vector_store' not in st.session_state:
-            st.session_state.vector_store = None
         if 'file_uploaded' not in st.session_state:
             st.session_state.file_uploaded = False
         if 'context_window_size' not in st.session_state:
@@ -146,40 +123,6 @@ class OllamaChatApp:
                 upload_file_to_api_server(uploaded_file)
                 st.success(
                     f"File Name: {uploaded_file.name}")
-                return True
-            except Exception as e:
-                st.error(f"Error processing file: {str(e)}")
-                return False
-        return False
-
-    def process_input_text(self, text_content, source):
-        """Process uploaded file (PDF or TXT) and store in vector database"""
-        if text_content is not None:
-            try:
-                text_splitter = RecursiveCharacterTextSplitter(
-                    chunk_size=512,
-                    chunk_overlap=50,
-                    length_function=len,
-                    separators=["\n\n", "\n", " ", ""]
-                )
-                texts = text_splitter.split_text(text_content)
-
-                if source is None:
-                    source = "N/A"
-                documents = [
-                    Document(
-                        page_content=text,
-                        metadata={"source": source, "page": f"{i}",
-                                  "belongs_to": st.session_state.username}
-                    ) for i, text in enumerate(texts)
-                ]
-
-                # Create or update vector store with persistence
-                self.vector_store = Chroma.from_documents(
-                    embedding=self.embeddings,
-                    documents=documents,
-                    persist_directory=self.persist_directory
-                )
                 return True
             except Exception as e:
                 st.error(f"Error processing file: {str(e)}")
@@ -474,7 +417,7 @@ Answer: """
 
             input_method = st.radio(
                 "Choose document input method:",
-                ["File Upload", "Text Input", "Add Link",
+                ["File Upload", "Add Note", "Add Link",
                     "File with Links", "Recursive Crawl"]
             )
 
@@ -557,16 +500,16 @@ Answer: """
                     height=300,
                     placeholder="Paste or type your text here..."
                 )
-                st.subheader("Add Source")
-                input_source = st.text_area(
-                    "Enter Metadata:",
+                st.subheader("Add Title")
+                input_title = st.text_area(
+                    "Enter Title of the Note:",
                     height=70,
-                    placeholder="Paste source link or type any metadata here.."
+                    placeholder="Enter Title.."
                 )
-                if input_text and input_source and st.button("Process Text"):
+                if input_text and input_title and st.button("Process Text"):
                     with st.spinner("Processing text..."):
-                        success = self.process_input_text(
-                            input_text,  input_source)
+                        success = upload_note_to_api_server(
+                            input_text,  input_title)
                         if success:
                             st.success(
                                 "Text processed and stored in vector database!")
