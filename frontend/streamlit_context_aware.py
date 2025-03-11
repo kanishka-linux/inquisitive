@@ -389,7 +389,6 @@ Answer: """
 
         return prompt
 
-
     def run(self):
         """Main application loop"""
 
@@ -474,7 +473,7 @@ Answer: """
                         success = submit_recursive_crawl_link(
                             input_url, headers)
                         if success:
-                            st.success("✅ Done! Processed.")
+                            st.success("✅ Submitted for Processing!.")
                         else:
                             st.error("Error Processing")
             elif input_method == "Add Link":
@@ -498,7 +497,7 @@ Answer: """
                     with st.spinner("Processing..."):
                         success = submit_link(input_url, headers)
                         if success:
-                            st.success("✅ Done! Processed.")
+                            st.success("✅ Submitted for Processing!")
                         else:
                             st.error("Error Processing")
             else:
