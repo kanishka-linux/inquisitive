@@ -77,3 +77,9 @@ class ProcessingStatus(str, enum.Enum):
     IN_PROGRESS = "in_progress"
     FINISHED = "finished"
     FAILED = "failed"
+
+
+class SourceType(str, enum.Enum):
+    FILE = "file"
+    LINK = "link"
+    NOTE = "note"
