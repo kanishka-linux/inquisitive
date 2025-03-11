@@ -222,6 +222,9 @@ def fetch_documents(prompt):
         "prompt": prompt,
     }
 
+    if st.session_state.source_type:
+        data["source_type"] = st.session_state.source_type
+
     response = requests.post(
         f"{settings.API_URL}/documents/search",
         headers=headers,
@@ -232,7 +235,5 @@ def fetch_documents(prompt):
     if response.status_code == 200:
         result = response.json()
         docs = result["documents"]
-
-    print(docs)
 
     return docs

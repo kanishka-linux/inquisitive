@@ -27,8 +27,6 @@ class OllamaChatApp:
     def __init__(self):
         self.init_session_state()
         self.setup_streamlit_page_layout()
-        self.embeddings = OllamaEmbeddings(model=settings.EMBEDDINGS_MODLLE)
-        self.persist_directory = settings.PERSISTS_DIRECTORY
 
     def init_session_state(self):
         if 'messages' not in st.session_state:
@@ -39,14 +37,14 @@ class OllamaChatApp:
             st.session_state.file_uploaded = False
         if 'context_window_size' not in st.session_state:
             st.session_state.context_window_size = 10
-        if 'selected_sources' not in st.session_state:
-            st.session_state.selected_sources = "All"
         if "exclude_selected" not in st.session_state:
             st.session_state.exclude_selected = []
         if "include_selected" not in st.session_state:
             st.session_state.include_selected = []
         if "ollama_model" not in st.session_state:
             st.session_state.ollama_model = None
+        if "source_type" not in st.session_state:
+            st.session_state.source_type = None
         if "ollama_model_selected" not in st.session_state:
             st.session_state.ollama_model_selected = None
 
@@ -226,10 +224,6 @@ Answer: """
     def ollama_model_selected(self):
         st.session_state.ollama_model_selected = st.session_state.select_ollama_model
 
-    def on_selectbox_change(self):
-        selection = st.session_state.selectbox_key
-        st.session_state.selected_sources = selection
-
     def handle_selection_change(self, source, key):
         """Callback function to handle selection changes"""
         # Store the selection in session state
@@ -382,6 +376,20 @@ Answer: """
             st.error(f"Error connecting to Ollama: {str(e)}")
             return []
 
+    def set_source_type(self, prompt):
+        if prompt.startswith("/links"):
+            st.session_state.source_type = "link"
+            prompt = re.sub(r"^/links ", "", prompt)
+        elif prompt.startswith("/notes"):
+            st.session_state.source_type = "note"
+            prompt = re.sub(r"^/notes ", "", prompt)
+        elif prompt.startswith("/files"):
+            st.session_state.source_type = "file"
+            prompt = re.sub(r"^/files ", "", prompt)
+
+        return prompt
+
+
     def run(self):
         """Main application loop"""
 
@@ -530,6 +538,7 @@ Answer: """
             with self.main_content.chat_message("user"):
                 st.markdown(prompt)
 
+            prompt = self.set_source_type(prompt)
             st.session_state.is_generating = True
             st.session_state.context_window_size = input_context_window_size
             asyncio.run(self.process_response(prompt, context_aware_search))
@@ -542,7 +551,6 @@ Answer: """
 
         if st.sidebar.button("Clear Chat"):
             st.session_state.messages = []
-            st.cache_resource.clear()
             st.rerun()
 
         if st.sidebar.button(f"Logout ({st.session_state.username}) ⬅️"):
