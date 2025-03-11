@@ -17,6 +17,8 @@ from backend.api.dependencies import (
     fastapi_users,
 )
 
+from backend.api.service import save_file
+
 from backend.worker.url_processor import url_processing_queue
 from backend.worker.url_processor_recursive import recursive_url_processing_queue
 from backend.worker.process_uploaded_file import file_processor_queue
@@ -26,7 +28,8 @@ from backend.api.models import (
     User,
     FileUpload,
     ProcessingStatus,
-    Link
+    Link,
+    Note
 )
 from backend.api.schemas import (
     TokenPayload,
@@ -43,7 +46,9 @@ from backend.api.schemas import (
     DocumentSearchResponse,
     DocumentSearchRequest,
     DocumentResult,
-    DocumentMetadata
+    DocumentMetadata,
+    NoteCreateRequest,
+    NoteCreateResponse
 )
 from backend.api.service import validate_jwt_token
 from backend.database import get_async_session
@@ -144,7 +149,7 @@ async def upload_file(
     await session.commit()
     await session.refresh(db_file)
 
-    await file_processor_queue.put((file_path, unique_filename, file_url, db_file.id, user.email))
+    await file_processor_queue.put((file_path, unique_filename, file_url, db_file.id, user.email, "file"))
     # Return the file URL to the client
     return {
         "filename": file.filename,
@@ -152,6 +157,82 @@ async def upload_file(
         "status": db_file.status,
         "upload_time": db_file.upload_time
     }
+
+
+# File upload endpoint
+@file_router.post("/note", response_model=NoteCreateResponse, status_code=202)
+async def create_note(
+    note: NoteCreateRequest,
+    user: User = Depends(current_active_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    doc_id, file_path, filename = save_file(note.content, note.title)
+
+    file_url = f"/file/note/{filename}"
+
+    # Create a database entry
+    db_note = Note(
+        url=file_url,
+        title=note.title,
+        filename=filename,
+        file_path=str(file_path),
+        status=ProcessingStatus.PENDING,
+        user_id=user.id
+    )
+
+    session.add(db_note)
+    await session.commit()
+    await session.refresh(db_note)
+
+    await file_processor_queue.put((file_path, filename, file_url, db_note.id, user.email, "note"))
+    # Return the file URL to the client
+    return NoteCreateResponse(
+        id=db_note.id,
+        url=file_url,
+        title=note.title,
+        status=db_note.status
+    )
+
+
+@file_router.get("/note/{filename}")
+async def get_file(
+    filename: str,
+    user: User = Depends(current_active_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    # Check if the file exists in the database
+    result = await session.execute(
+        select(Note).where(Note.filename == filename)
+    )
+    note_record = result.scalars().first()
+
+    if not note_record:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File not found"
+        )
+
+    # Check if the user has access to the file
+    if note_record.user_id != user.id and not user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have permission to access this file"
+        )
+
+    # Check if the file exists on disk
+    file_path = Path(note_record.file_path)
+    if not file_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File not found on server"
+        )
+
+    # Return the file as a response
+    return FileResponse(
+        path=file_path,
+        filename=note_record.title,
+        media_type="text/markdown"
+    )
 
 
 @file_router.get("/{filename}")
@@ -173,7 +254,6 @@ async def get_file(
         )
 
     # Check if the user has access to the file
-    # (You might want to implement more complex access control)
     if file_record.user_id != user.id and not user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
