@@ -197,12 +197,10 @@ def submit_recursive_crawl_link(link, custom_headers):
     )
 
     if response.status_code == 202:
-        result = response.json()
-        st.success(f"{result}")
         return True
-    else:
-        st.error("failed to submit links")
-        return False
+
+    st.error("failed to submit links")
+    return False
 
 
 def fetch_documents(prompt):
