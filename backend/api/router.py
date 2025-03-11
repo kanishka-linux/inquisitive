@@ -184,7 +184,9 @@ async def create_note(
     await session.commit()
     await session.refresh(db_note)
 
-    await file_processor_queue.put((file_path, filename, file_url, db_note.id, user.email, "note"))
+    await file_processor_queue.put(
+            (file_path, filename, file_url, db_note.id, user.email, "note")
+        )
     # Return the file URL to the client
     return NoteCreateResponse(
         id=db_note.id,
@@ -357,7 +359,8 @@ async def search_documents(
             request.exclude_sources,
             request.window_size,
             user.email,
-            request.prompt
+            request.prompt,
+            request.source_type
         )
         # Format results
         results = []

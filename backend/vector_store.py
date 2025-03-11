@@ -4,7 +4,12 @@ from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from backend.config import settings
 from backend.core.logging import get_logger
-from backend.core.utils import extract_text_from_pdf, is_file_pdf, read_text_file_content
+from backend.core.utils import (
+        extract_text_from_pdf,
+        is_file_pdf,
+        read_text_file_content
+    )
+from backend.api.models import SourceType
 
 logger = get_logger()
 
@@ -39,7 +44,8 @@ def add_link_content_to_vector_store(
                 "page": f"{i}",
                 "title": title,
                 "belongs_to": username,
-                "link_id": f"{link_id}"
+                "link_id": f"{link_id}",
+                "source_type": SourceType.LINK
             }
         ) for i, text in enumerate(texts)
     ]
@@ -57,6 +63,10 @@ def add_uploaded_document_content_to_vector_store(
         text_content = read_text_file_content(file_path)
 
     texts = text_splitter.split_text(text_content)
+    if file_name.endswith('.md'):
+        source_type = SourceType.NOTE
+    else:
+        source_type = SourceType.FILE
 
     documents = [
         Document(
@@ -66,7 +76,8 @@ def add_uploaded_document_content_to_vector_store(
                 "page": f"{i}",
                 "filename": file_name,
                 "belongs_to": username,
-                "file_id": f"{file_id}"
+                "file_id": f"{file_id}",
+                "source_type": source_type
             }
         ) for i, text in enumerate(texts)
     ]
@@ -75,7 +86,13 @@ def add_uploaded_document_content_to_vector_store(
     logger.info(f"processed: {file_name} with id={file_id}")
 
 
-def fetch_documents(include_selected, exclude_selected, window_size, username, prompt):
+def fetch_documents(
+        include_selected,
+        exclude_selected,
+        window_size,
+        username,
+        prompt,
+        source_type=None):
 
     filter_dict = {}
     if exclude_selected and include_selected:
@@ -110,6 +127,22 @@ def fetch_documents(include_selected, exclude_selected, window_size, username, p
         filter_dict = {
             "belongs_to": {"$in": [username]}
         }
+
+    if source_type is not None:
+        conditions = filter_dict.get("$and")
+        if conditions and isinstance(conditions, list):
+            # It means there are existing conditions
+            # and we need to just append new condition
+            # to existing one
+            conditions.append({"source_type": {"$in": [source_type]}})
+            filter_dict["$and"] = conditions.copy()
+        else:
+            filter_dict = {
+                "$and": [
+                    {"source_type": {"$in": [source_type]}},
+                    {"belongs_to": {"$in": [username]}}
+                ]
+            }
 
     docs = vector_store.similarity_search_with_relevance_scores(
         prompt,
