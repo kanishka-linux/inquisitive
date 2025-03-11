@@ -17,7 +17,7 @@ from backend.api.dependencies import (
     fastapi_users,
 )
 
-from backend.api.service import save_file
+from backend.core.utils import save_file
 
 from backend.worker.url_processor import url_processing_queue
 from backend.worker.url_processor_recursive import recursive_url_processing_queue
