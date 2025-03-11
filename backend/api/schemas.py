@@ -117,3 +117,15 @@ class DocumentResult(schemas.BaseModel):
 class DocumentSearchResponse(schemas.BaseModel):
     documents: List[DocumentResult]
     count: int
+
+
+class NoteCreateRequest(schemas.BaseModel):
+    content: str
+    title: str
+
+
+class NoteCreateResponse(schemas.BaseModel):
+    id: int
+    url: str
+    title: str
+    status: str
