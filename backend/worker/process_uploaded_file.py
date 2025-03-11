@@ -1,6 +1,6 @@
 import asyncio
 
-from backend.api.models import FileUpload, ProcessingStatus
+from backend.api.models import FileUpload, ProcessingStatus, Note
 from backend.vector_store import add_uploaded_document_content_to_vector_store
 from backend.core.logging import get_logger
 from backend.database import async_session_maker
@@ -19,11 +19,11 @@ async def process_uploaded_file_queue():
     while True:
         try:
             # Get an item from the queue
-            file_path, file_name, file_url, file_id, user_email = await file_processor_queue.get()
+            file_path, file_name, file_url, file_id, user_email, input_type = await file_processor_queue.get()
 
             # Process the URL in a separate task to avoid blocking the queue
             asyncio.create_task(process_file(
-                file_path, file_name, file_url, file_id, user_email))
+                file_path, file_name, file_url, file_id, user_email, input_type))
 
             # Mark the queue task as done
             file_processor_queue.task_done()
@@ -34,7 +34,7 @@ async def process_uploaded_file_queue():
 
 
 # Background task to process URLs from the queue
-async def process_file(file_path, file_name, file_url, file_id, user_email):
+async def process_file(file_path, file_name, file_url, file_id, user_email, input_type):
     # Acquire the semaphore to limit concurrency
     async with concurrency_limit:
         async with async_session_maker() as db:
@@ -48,7 +48,10 @@ async def process_file(file_path, file_name, file_url, file_id, user_email):
                     user_email
                 )
 
-                stmt = select(FileUpload).where(FileUpload.id == file_id)
+                if input_type == "note":
+                    stmt = select(Note).where(Note.id == file_id)
+                else:
+                    stmt = select(FileUpload).where(FileUpload.id == file_id)
                 result = await db.execute(stmt)
                 file_row = result.scalars().first()
 
