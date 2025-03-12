@@ -4,9 +4,6 @@ from typing import Dict
 
 
 class Settings(BaseSettings):
-    EMBEDDINGS_MODLLE: str = "chroma/all-minilm-l6-v2-f32"
-
-    PERSISTS_DIRECTORY: str = "./chroma_db"
     API_URL: str = "http://localhost:8000"
     UPLOAD_FILE_TYPES: list[str] = ['txt', 'pdf', "md", "json", "sh"]
     DEFAULT_HEADERS: Dict[str, str] = {
