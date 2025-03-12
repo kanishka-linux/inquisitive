@@ -3,7 +3,6 @@ import ollama
 import asyncio
 from typing import AsyncGenerator
 import time
-from langchain_ollama import OllamaEmbeddings
 import PyPDF2
 import json
 import re

@@ -2,7 +2,7 @@ import streamlit as st
 
 from utils import init_session_state, load_token_from_storage
 from auth_page import show_login_page, show_register_page, logout_user
-from streamlit_context_aware import OllamaChatApp
+from streamlit_ui import OllamaChatApp
 
 st.set_page_config(
     page_title="Document Q&A",
