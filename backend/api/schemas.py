@@ -125,6 +125,15 @@ class NoteCreateRequest(schemas.BaseModel):
     title: str
 
 
+class NoteUpdateRequest(schemas.BaseModel):
+    content: str
+
+
+class NoteUpdateResponse(schemas.BaseModel):
+    filename: str
+    updated: bool
+
+
 class NoteCreateResponse(schemas.BaseModel):
     id: int
     url: str
@@ -138,6 +147,7 @@ class NoteResponse(schemas.BaseModel):
     title: str
     filename: str
     created_at: datetime
+    updated_at: datetime
 
 
 class NoteList(schemas.BaseModel):
