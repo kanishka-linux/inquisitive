@@ -270,6 +270,7 @@ Answer: """
                     "text": doc["page_content"],
                     "title": metadata.get("title", source),
                     "filename": metadata.get("filename", ""),
+                    "source_type": metadata.get("source_type", "")
                 }
                 references.append(reference)
 
@@ -299,9 +300,17 @@ Answer: """
                         if ref['text']:
                             st.markdown(ref['text'])
                         if ref['filename']:
-                            st.button("View Document", key=f"btn_{i}", on_click=self.render_file_sync, args=(
-                                ref['source'],))
 
+                            cols = st.columns([5, 3])
+                            cols[0].button("View Document", key=f"btn_{i}", on_click=self.render_file_sync, args=(
+                                ref['source'],))
+                            if ref['source_type'] == "note":
+                                cols[1].button(
+                                    "Edit",
+                                    key=f"edit_note_button_{i}",
+                                    on_click=self.edit_note_btn_clicked,
+                                    args=(ref['source'],)
+                                )
         with self.main_content.chat_message("assistant"):
             message_placeholder = st.empty()
             self.qna_tab.container().empty()
@@ -325,6 +334,7 @@ Answer: """
         with self.main_content:
             with st.spinner("Loading document..."):
                 st.session_state.is_generating = False
+
                 asyncio.run(self.render_file_async(file_url))
 
     def render_note_sync(self, file_url, note_id, note_filename):
@@ -357,10 +367,12 @@ Answer: """
 
                 elif content_type == "text/markdown":
                     try:
+
                         markdown_text = content.decode(
                             'utf-8', errors='replace')
                         self.qna_tab.container(border=True).markdown(
                             markdown_text, unsafe_allow_html=True)
+
                     except:
                         self.qna_tab.text_area(
                             "Markdown Content", content, height=300)
@@ -407,7 +419,7 @@ Answer: """
 
     def display_notes(self):
 
-        PAGE_SIZE = 10
+        PAGE_SIZE = settings.LIST_PAGE_SIZE
 
         # Initialize session state for page number if not exists
         current_page = st.session_state.list_page_number
@@ -448,7 +460,7 @@ Answer: """
             st.session_state.list_page_number_modified = True
             st.rerun()
 
-        header_cols = self.main_content.columns([1, 3, 3, 1, 1, 1])
+        header_cols = self.main_content.columns([1, 5, 5, 5, 2, 2])
         header_cols[0].write("**ID**")
         header_cols[1].write("**Title**")
         header_cols[2].write("**FILENAME**")
@@ -460,7 +472,7 @@ Answer: """
 
         # Display each note
         for i, note in enumerate(records):
-            cols = self.main_content.columns([1, 3, 3, 1, 1, 1])
+            cols = self.main_content.columns([1, 5, 5, 5, 2, 2])
 
             # Display ID
             cols[0].write(f"{i+offset+1}")
@@ -681,7 +693,7 @@ Answer: """
 
         if (st.session_state.view_mode == "notes-list"
                 or st.session_state.list_page_number_modified
-                ):
+            ):
             st.session_state.list_page_number_modified = False
             self.display_notes()
 
