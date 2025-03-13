@@ -102,8 +102,9 @@ class DocumentSearchRequest(schemas.BaseModel):
 class DocumentMetadata(schemas.BaseModel):
     source: str
     page: str
-    title: Optional[str] = None
+    source_type: str
     belongs_to: str
+    title: Optional[str] = None
     link_id: Optional[str] = None
     file_id: Optional[str] = None
     filename: Optional[str] = None
