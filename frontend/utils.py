@@ -231,3 +231,41 @@ def fetch_documents(prompt):
         docs = result["documents"]
 
     return docs
+
+
+def fetch_notes(skip=0, limit=100):
+    headers = {
+        "Authorization": f"Bearer {st.session_state.token}",
+        "Content-Type": "application/json"
+    }
+
+    params = {"skip": skip, "limit": limit}
+    response = requests.get(
+        f"{settings.API_URL}/file/note",
+        headers=headers,
+        params=params
+    )
+
+    result = {"notes": [], "total": 0}
+    if response.status_code == 200:
+        result = response.json()
+    else:
+        result
+
+    return result
+
+
+def fetch_file(file_url):
+    headers = {
+        "Authorization": f"Bearer {st.session_state.token}"
+    }
+
+    response = requests.get(
+        f"{settings.API_URL}{file_url}",
+        headers=headers
+    )
+
+    if response.status_code == 200:
+        return response.content.decode("utf-8")
+
+    return "failed to fetch  content"

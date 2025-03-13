@@ -16,7 +16,9 @@ from utils import (
     submit_bulk_links,
     submit_recursive_crawl_link,
     fetch_documents,
-    upload_note_to_api_server
+    upload_note_to_api_server,
+    fetch_notes,
+    fetch_file
 )
 
 from config import settings
@@ -46,6 +48,14 @@ class OllamaChatApp:
             st.session_state.source_type = None
         if "ollama_model_selected" not in st.session_state:
             st.session_state.ollama_model_selected = None
+        if "view_mode" not in st.session_state:
+            st.session_state.view_mode = None
+        if 'list_page_number' not in st.session_state:
+            st.session_state.list_page_number = 1
+        if 'list_page_number_modified' not in st.session_state:
+            st.session_state.list_page_number_modified = False
+        if 'edit_note_url' not in st.session_state:
+            st.session_state.edit_note_url = None
 
     def setup_streamlit_page_layout(self):
         self.qna_tab = st
@@ -316,6 +326,12 @@ Answer: """
                 st.session_state.is_generating = False
                 asyncio.run(self.render_file_async(file_url))
 
+    def render_note_sync(self, file_url, note_id, note_filename):
+        with self.main_content:
+            with st.spinner("Loading document..."):
+                st.session_state.is_generating = False
+                asyncio.run(self.render_file_async(file_url))
+
     async def render_file_async(self, file_url):
         async with aiohttp.ClientSession() as session:
             async with session.get(
@@ -387,6 +403,116 @@ Answer: """
             prompt = re.sub(r"^/files ", "", prompt)
 
         return prompt
+
+    def display_notes(self):
+
+        PAGE_SIZE = 10
+
+        # Initialize session state for page number if not exists
+        current_page = st.session_state.list_page_number
+
+        # Calculate offset for API call
+        offset = (current_page - 1) * PAGE_SIZE
+
+        # Fetch only the notes for the current page
+        response = fetch_notes(offset, PAGE_SIZE)
+        records = response["notes"]
+        total_notes = response["total"]
+
+        import math
+        total_pages = math.ceil(total_notes / PAGE_SIZE)
+
+        col1, col2 = self.main_content.columns([3, 1])
+
+        with col1:
+            # Show current range of notes being displayed
+            start_idx = offset + 1
+            end_idx = min(offset + PAGE_SIZE, total_notes)
+            st.write(f"Showing notes {start_idx}-{end_idx} of {total_notes}")
+
+        with col2:
+            # Simple page input
+            page_input = st.number_input(
+                "Go to page",
+                min_value=1,
+                max_value=total_pages,
+                value=current_page,
+                step=1,
+                key="page_input"
+            )
+
+        # Update page number when input changes
+        if page_input != current_page:
+            st.session_state.list_page_number = page_input
+            st.session_state.list_page_number_modified = True
+            st.rerun()
+
+        header_cols = self.main_content.columns([1, 3, 3, 1, 1, 1])
+        header_cols[0].write("**ID**")
+        header_cols[1].write("**Title**")
+        header_cols[2].write("**FILENAME**")
+        header_cols[3].write("**Created At**")
+        header_cols[4].write("**Action**")
+
+        # Add a separator
+        self.main_content.markdown("---")
+
+        # Display each note
+        for i, note in enumerate(records):
+            cols = self.main_content.columns([1, 3, 3, 1, 1, 1])
+
+            # Display ID
+            cols[0].write(f"{i+offset+1}")
+
+            # Display Title
+            cols[1].write(note["title"])
+
+            cols[2].write(note["filename"])
+
+            url = note["url"]
+            # View button
+
+            cols[3].write(note["created_at"])
+
+            cols[4].button(
+                "View",
+                key=f"view_note_{note['id']}",
+                on_click=self.render_note_sync,
+                args=(url, note["id"], note["filename"]))
+
+            cols[5].button(
+                "Edit",
+                key=f"edit_note_button_{note['id']}",
+                on_click=self.edit_note_btn_clicked,
+                args=(url,)
+            )
+
+    def edit_note_btn_clicked(self, file_url):
+        st.session_state.view_mode = "edit-note"
+        st.session_state.edit_note_url = file_url
+
+    def edit_notes(self, file_url):
+        filename = file_url.rsplit("/")[-1]
+        content = fetch_file(file_url)
+        with self.main_content:
+            self.main_content.text_area(
+                f"Edit {filename} in markdown format:",
+                height=300,
+                value=content
+            )
+            cols = self.main_content.columns([1, 1, 2, 2])
+            if cols[0].button(
+                    "← Back to List",
+                    key="back_to_list_button"
+            ):
+                st.session_state.view_mode = "notes-list"
+                st.rerun()
+            if cols[1].button(
+                    "Save",
+                    key="note_save_button"
+            ):
+                # MakeBE API call
+                st.rerun()
 
     def run(self):
         """Main application loop"""
@@ -536,11 +662,25 @@ Answer: """
             with self.main_content.chat_message("user"):
                 st.markdown(prompt)
 
-            prompt = self.set_source_type(prompt)
-            st.session_state.is_generating = True
-            st.session_state.context_window_size = input_context_window_size
-            asyncio.run(self.process_response(prompt, context_aware_search))
-            st.session_state.is_generating = False
+            if prompt.startswith("/notes-list"):
+                st.session_state.view_mode = "notes-list"
+            else:
+                st.session_state.view_mode = "ollama-chat"
+                prompt = self.set_source_type(prompt)
+                st.session_state.is_generating = True
+                st.session_state.context_window_size = input_context_window_size
+                asyncio.run(self.process_response(
+                    prompt, context_aware_search))
+                st.session_state.is_generating = False
+
+        if (st.session_state.view_mode == "notes-list"
+            or st.session_state.list_page_number_modified
+            ):
+            st.session_state.list_page_number_modified = False
+            self.display_notes()
+
+        if st.session_state.view_mode == "edit-note":
+            self.edit_notes(st.session_state.edit_note_url)
 
         if st.session_state.is_generating:
             if st.button("Stop Generating"):
@@ -549,6 +689,7 @@ Answer: """
 
         if st.sidebar.button("Clear Chat"):
             st.session_state.messages = []
+            self.main_content.empty()
             st.rerun()
 
         if st.sidebar.button(f"Logout ({st.session_state.username}) ⬅️"):
