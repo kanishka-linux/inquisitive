@@ -151,3 +151,32 @@ def fetch_documents(
     )
 
     return docs
+
+
+def remove_documents(filename, username):
+    try:
+        filter_dict = {
+            "$and": [
+                {"filename": {"$eq": filename}},
+                {"belongs_to": {"$eq": username}}
+            ]
+        }
+
+        # Access the underlying Chroma collection
+        # Use the get method with the where parameter
+        matching_docs = vector_store._collection.get(where=filter_dict)
+        if matching_docs and len(matching_docs['ids']) > 0:
+            # Delete the documents using their IDs
+            vector_store.delete(ids=matching_docs['ids'])
+            logger.info(
+                f"Removed documents with filename={filename} belonging to user={username}")
+            return True
+        else:
+            logger.warning(
+                f"No documents found with filename={filename} belonging to user={username}")
+            return False
+
+    except Exception as err:
+        logger.error(
+            f"Error removing documents with filename={filename}: {str(err)}")
+        return False
