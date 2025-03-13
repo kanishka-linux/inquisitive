@@ -5,6 +5,7 @@ from backend.vector_store import add_uploaded_document_content_to_vector_store
 from backend.core.logging import get_logger
 from backend.database import async_session_maker
 from sqlalchemy import select
+from datetime import datetime
 
 
 # import logging
@@ -62,6 +63,7 @@ async def process_file(
                 file_row = result.scalars().first()
 
                 file_row.status = ProcessingStatus.FINISHED
+                file_row.updated_at = datetime.utcnow()
                 await db.commit()
 
                 file_processor_queue.task_done()
