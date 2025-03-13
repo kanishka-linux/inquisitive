@@ -131,6 +131,30 @@ def upload_note_to_api_server(content, title):
         return title
 
 
+def update_note_to_api_server(content, file_url):
+    headers = {
+        "Authorization": f"Bearer {st.session_state.token}",
+        "Content-Type": "application/json"
+    }
+
+    data = {
+        "content": content
+    }
+
+    # Send the note to FastAPI
+    response = requests.patch(
+        f"{settings.API_URL}{file_url}",
+        headers=headers,
+        json=data
+    )
+
+    if response.status_code == 200:
+        return True
+
+    st.error(f"Update failed: {response.text}")
+    return False
+
+
 def submit_link(link, custom_headers):
     headers = {
         "Authorization": f"Bearer {st.session_state.token}",
