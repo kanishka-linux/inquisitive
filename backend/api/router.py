@@ -17,12 +17,13 @@ from backend.api.dependencies import (
     fastapi_users,
 )
 
-from backend.core.utils import save_file
+from backend.core.utils import save_file, update_file_with_backup
 
 from backend.worker.url_processor import url_processing_queue
 from backend.worker.url_processor_recursive import recursive_url_processing_queue
 from backend.worker.process_uploaded_file import file_processor_queue
-from backend.vector_store import fetch_documents
+from backend.vector_store import fetch_documents, remove_documents
+from datetime import datetime
 
 from backend.api.models import (
     User,
@@ -50,7 +51,9 @@ from backend.api.schemas import (
     NoteCreateRequest,
     NoteCreateResponse,
     NoteList,
-    NoteResponse
+    NoteResponse,
+    NoteUpdateRequest,
+    NoteUpdateResponse
 )
 from backend.api.service import validate_jwt_token
 from backend.database import get_async_session
@@ -168,7 +171,13 @@ async def create_note(
     user: User = Depends(current_active_user),
     session: AsyncSession = Depends(get_async_session)
 ):
-    doc_id, file_path, filename = save_file(note.content, note.title)
+    doc_id, file_path, filename, saved = save_file(note.content, note.title)
+
+    if not saved:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Error creating file"
+        )
 
     file_url = f"/file/note/{filename}"
 
@@ -209,7 +218,7 @@ async def list_notes(
     stmt = (
         select(Note)
         .where(Note.user_id == user.id)
-        .order_by(desc(Note.created_at))
+        .order_by(desc(Note.updated_at))
         .offset(skip)
         .limit(limit)
     )
@@ -232,7 +241,8 @@ async def list_notes(
             id=record.id,
             title=record.title,
             filename=record.filename,
-            created_at=record.created_at
+            created_at=record.created_at,
+            updated_at=record.updated_at
         ) for record in records
     ]
     # Return the file URL to the client
@@ -243,7 +253,7 @@ async def list_notes(
 
 
 @file_router.get("/note/{filename}")
-async def get_file(
+async def get_note(
     filename: str,
     user: User = Depends(current_active_user),
     session: AsyncSession = Depends(get_async_session)
@@ -280,6 +290,67 @@ async def get_file(
         path=file_path,
         filename=note_record.title,
         media_type="text/markdown"
+    )
+
+
+@file_router.patch(
+    "/note/{filename}",
+    response_model=NoteUpdateResponse,
+    status_code=200)
+async def update_note(
+    filename: str,
+    note: NoteUpdateRequest,
+    user: User = Depends(current_active_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    result = await session.execute(
+        select(Note)
+        .where(Note.filename == filename, Note.user_id == user.id)
+    )
+    note_record = result.scalars().first()
+    note_record.status = ProcessingStatus.PENDING
+    await session.commit()
+
+    if not note_record:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File not found"
+        )
+
+    updated = update_file_with_backup(note.content, note_record.filename)
+    if not updated:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Error updating file"
+        )
+
+    # remove existing vector documents
+    # and then add new set of updated documents
+    vector_documents_removed = remove_documents(
+        note_record.filename,
+        user.email
+    )
+    if vector_documents_removed:
+        await file_processor_queue.put(
+            (
+                note_record.file_path,
+                note_record.filename,
+                note_record.url,
+                note_record.id,
+                user.email,
+                "note"
+            )
+        )
+
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="File not found on server"
+        )
+
+    return NoteUpdateResponse(
+        filename=note_record.filename,
+        updated=True
     )
 
 
