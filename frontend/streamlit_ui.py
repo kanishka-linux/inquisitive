@@ -18,7 +18,8 @@ from utils import (
     fetch_documents,
     upload_note_to_api_server,
     fetch_notes,
-    fetch_file
+    fetch_file,
+    update_note_to_api_server
 )
 
 from config import settings
@@ -451,7 +452,7 @@ Answer: """
         header_cols[0].write("**ID**")
         header_cols[1].write("**Title**")
         header_cols[2].write("**FILENAME**")
-        header_cols[3].write("**Created At**")
+        header_cols[3].write("**Updated At**")
         header_cols[4].write("**Action**")
 
         # Add a separator
@@ -472,7 +473,7 @@ Answer: """
             url = note["url"]
             # View button
 
-            cols[3].write(note["created_at"])
+            cols[3].write(note["updated_at"])
 
             cols[4].button(
                 "View",
@@ -495,7 +496,7 @@ Answer: """
         filename = file_url.rsplit("/")[-1]
         content = fetch_file(file_url)
         with self.main_content:
-            self.main_content.text_area(
+            updated_content = self.main_content.text_area(
                 f"Edit {filename} in markdown format:",
                 height=300,
                 value=content
@@ -511,8 +512,13 @@ Answer: """
                     "Save",
                     key="note_save_button"
             ):
-                # MakeBE API call
-                st.rerun()
+                if updated_content:
+                    updated = update_note_to_api_server(
+                        updated_content, file_url)
+                    if updated:
+                        st.success("file updated successfully")
+                    else:
+                        st.error("error occurred when updating file")
 
     def run(self):
         """Main application loop"""
@@ -674,8 +680,8 @@ Answer: """
                 st.session_state.is_generating = False
 
         if (st.session_state.view_mode == "notes-list"
-            or st.session_state.list_page_number_modified
-            ):
+                or st.session_state.list_page_number_modified
+                ):
             st.session_state.list_page_number_modified = False
             self.display_notes()
 
