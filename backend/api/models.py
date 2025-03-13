@@ -29,14 +29,16 @@ class FileUpload(Base):
     __tablename__ = "file_uploads"
 
     id = Column(Integer, primary_key=True, index=True)
-    filename = Column(String)
+    filename = Column(String, index=True)
     original_filename = Column(String)
     file_path = Column(String)
     file_url = Column(String)
     status = Column(String)
     content_type = Column(String)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, onupdate=func.now())
     upload_time = Column(DateTime, default=datetime.utcnow)
-    user_id = Column(Integer, ForeignKey("users.id"))
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
 
     owner = relationship("User", back_populates="files")
 
@@ -51,7 +53,7 @@ class Link(Base):
     status = Column(String)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
-    user_id = Column(Integer, ForeignKey("users.id"))
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
 
     owner = relationship("User", back_populates="links")
 
@@ -62,12 +64,12 @@ class Note(Base):
     id = Column(Integer, primary_key=True, index=True)
     url = Column(String, index=True)
     title = Column(String)
-    filename = Column(String)
+    filename = Column(String, index=True)
     file_path = Column(String)
     status = Column(String)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
-    user_id = Column(Integer, ForeignKey("users.id"))
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
 
     owner = relationship("User", back_populates="notes")
 
