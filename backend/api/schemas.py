@@ -130,3 +130,16 @@ class NoteCreateResponse(schemas.BaseModel):
     url: str
     title: str
     status: str
+
+
+class NoteResponse(schemas.BaseModel):
+    id: int
+    url: str
+    title: str
+    filename: str
+    created_at: datetime
+
+
+class NoteList(schemas.BaseModel):
+    notes: List[NoteResponse]
+    total: int

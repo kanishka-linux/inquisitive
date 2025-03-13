@@ -8,7 +8,7 @@ from fastapi import (
     status
 )
 from fastapi.responses import FileResponse
-from sqlalchemy import select
+from sqlalchemy import select, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.dependencies import (
@@ -48,7 +48,9 @@ from backend.api.schemas import (
     DocumentResult,
     DocumentMetadata,
     NoteCreateRequest,
-    NoteCreateResponse
+    NoteCreateResponse,
+    NoteList,
+    NoteResponse
 )
 from backend.api.service import validate_jwt_token
 from backend.database import get_async_session
@@ -159,7 +161,7 @@ async def upload_file(
     }
 
 
-# File upload endpoint
+# Note upload endpoint
 @file_router.post("/note", response_model=NoteCreateResponse, status_code=202)
 async def create_note(
     note: NoteCreateRequest,
@@ -193,6 +195,50 @@ async def create_note(
         url=file_url,
         title=note.title,
         status=db_note.status
+    )
+
+
+# Note List endpoint
+@file_router.get("/note", response_model=NoteList, status_code=200)
+async def list_notes(
+    skip: int = 0,
+    limit: int = 100,
+    user: User = Depends(current_active_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    stmt = (
+        select(Note)
+        .where(Note.user_id == user.id)
+        .order_by(desc(Note.created_at))
+        .offset(skip)
+        .limit(limit)
+    )
+
+    result = await session.execute(stmt)
+    records = result.scalars().all()
+
+    count_stmt = (
+        select(func.count())
+        .select_from(Note)
+        .where(Note.user_id == user.id)
+    )
+
+    total_count = await session.execute(count_stmt)
+    total_count = total_count.scalar() or 0
+
+    result = [
+        NoteResponse(
+            url=record.url,
+            id=record.id,
+            title=record.title,
+            filename=record.filename,
+            created_at=record.created_at
+        ) for record in records
+    ]
+    # Return the file URL to the client
+    return NoteList(
+        notes=result,
+        total=total_count
     )
 
 
