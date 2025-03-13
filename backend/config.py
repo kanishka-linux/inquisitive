@@ -6,7 +6,7 @@ from typing import Dict
 
 class Settings(BaseSettings):
     # Database settings
-    DATABASE_URL: str = "sqlite+aiosqlite:///./users.db"
+    DATABASE_URL: str = "sqlite+aiosqlite:///./inquisitive.db"
 
     # JWT settings
     # In production, use a secure key
