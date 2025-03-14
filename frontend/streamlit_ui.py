@@ -447,6 +447,19 @@ Answer: """
 
         return prompt
 
+    def set_source_type_radio_button(self, key):
+        value = st.session_state.get(key, "")
+        if value.startswith("/links"):
+            st.session_state.source_type = "link"
+        elif value.startswith("/notes"):
+            st.session_state.source_type = "note"
+        elif value.startswith("/files"):
+            st.session_state.source_type = "file"
+        else:
+            st.session_state.source_type = None
+
+        return value
+
     def format_timestamp(self, timestamp_str):
         # Parse the ISO format timestamp
         dt = datetime.fromisoformat(timestamp_str)
@@ -772,6 +785,16 @@ Answer: """
             st.empty()
             st.session_state.prompt_with_docs.clear()
             st.rerun()
+
+        with st.sidebar:
+            if st.sidebar.button("Select source"):
+                st.sidebar.radio(
+                    "Choose source type:",
+                    ["/none", "/files", "/links", "/notes"],
+                    key="source_radio_button",
+                    on_change=self.set_source_type_radio_button,
+                    args=("source_radio_button", )
+                )
 
         if st.sidebar.button(f"Logout ({st.session_state.username}) ⬅️"):
             navigate_to("logout")
