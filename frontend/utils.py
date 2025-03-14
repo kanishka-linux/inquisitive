@@ -4,6 +4,8 @@ import requests
 import streamlit as st
 from streamlit_js_eval import streamlit_js_eval
 from config import settings
+import streamlit.components.v1 as components
+from string import Template
 
 
 def init_session_state():
@@ -293,3 +295,293 @@ def fetch_file(file_url):
         return response.content.decode("utf-8")
 
     return "failed to fetch  content"
+
+
+# TODO: WIP markdown editor
+def create_markdown_editor(default_content, key, height):
+    # Define the HTML and JavaScript for the markdown editor
+    default_content_escaped = default_content.replace(
+        '"', '\\"').replace('\n', '\\n')
+    template = Template("""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8"/>
+        <title>Markdown Editor</title>
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            }
+            
+            #editor {
+                display: flex;
+                position: relative;
+                width: 100%;
+                height: 600px;
+            }
+            
+            #markdown-content,
+            #html-preview {
+                padding: 20px;
+                width: 50%;
+                height: 100%;
+                box-sizing: border-box;
+                overflow-y: auto;
+            }
+            
+            #markdown-content {
+                background: #f8f9fa;
+                border: none;
+                border-radius: 4px 0 0 4px;
+                color: #212529;
+                outline: none;
+                resize: none;
+                font-family: monospace;
+                font-size: 14px;
+                line-height: 1.5;
+            }
+            
+            #html-preview {
+                background: #ffffff;
+                border-radius: 0 4px 4px 0;
+                border-left: 1px solid #dee2e6;
+                color: #212529;
+            }
+            
+            #html-preview h1, #html-preview h2, #html-preview h3, 
+            #html-preview h4, #html-preview h5, #html-preview h6 {
+                margin-top: 0;
+                margin-bottom: 0.5rem;
+                font-weight: 500;
+                line-height: 1.2;
+            }
+            
+            #html-preview h1 { font-size: 2.5rem; }
+            #html-preview h2 { font-size: 2rem; }
+            #html-preview h3 { font-size: 1.75rem; }
+            #html-preview h4 { font-size: 1.5rem; }
+            #html-preview h5 { font-size: 1.25rem; }
+            #html-preview h6 { font-size: 1rem; }
+            
+            #html-preview p {
+                margin-top: 0;
+                margin-bottom: 1rem;
+            }
+            
+            #html-preview a {
+                color: #007bff;
+                text-decoration: none;
+            }
+            
+            #html-preview a:hover {
+                text-decoration: underline;
+            }
+            
+            #html-preview pre {
+                background-color: #f8f9fa;
+                border-radius: 4px;
+                padding: 1rem;
+                overflow: auto;
+            }
+            
+            #html-preview code {
+                font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+                font-size: 87.5%;
+                color: #e83e8c;
+            }
+            
+            #html-preview pre code {
+                font-size: inherit;
+                color: inherit;
+            }
+            
+            #html-preview blockquote {
+                padding: 0.5rem 1rem;
+                margin-left: 0;
+                margin-right: 0;
+                border-left: 0.25rem solid #dee2e6;
+            }
+            
+            #html-preview ul, #html-preview ol {
+                padding-left: 2rem;
+                margin-top: 0;
+                margin-bottom: 1rem;
+            }
+            
+            #html-preview img {
+                max-width: 100%;
+                height: auto;
+            }
+            
+            #html-preview table {
+                width: 100%;
+                margin-bottom: 1rem;
+                color: #212529;
+                border-collapse: collapse;
+            }
+            
+            #html-preview table th,
+            #html-preview table td {
+                padding: 0.75rem;
+                vertical-align: top;
+                border-top: 1px solid #dee2e6;
+            }
+            
+            #html-preview table thead th {
+                vertical-align: bottom;
+                border-bottom: 2px solid #dee2e6;
+            }
+            
+            .editor-toolbar {
+                display: flex;
+                background: #f1f3f5;
+                padding: 8px;
+                border-radius: 4px 4px 0 0;
+            }
+            
+            .editor-toolbar button {
+                background: #ffffff;
+                border: 1px solid #ced4da;
+                border-radius: 4px;
+                color: #495057;
+                cursor: pointer;
+                font-size: 14px;
+                margin-right: 4px;
+                padding: 4px 8px;
+            }
+            
+            .editor-toolbar button:hover {
+                background: #e9ecef;
+            }
+            
+            .editor-container {
+                display: flex;
+                flex-direction: column;
+                width: 100%;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="editor-container">
+            <div class="editor-toolbar">
+                <button onclick="insertMarkdown('# ')">H1</button>
+                <button onclick="insertMarkdown('## ')">H2</button>
+                <button onclick="insertMarkdown('### ')">H3</button>
+                <button onclick="insertMarkdown('**', '**')">Bold</button>
+                <button onclick="insertMarkdown('*', '*')">Italic</button>
+                <button onclick="insertMarkdown('[', '](url)')">Link</button>
+                <button onclick="insertMarkdown('- ')">List</button>
+                <button onclick="insertMarkdown('1. ')">Numbered List</button>
+                <button onclick="insertMarkdown('> ')">Quote</button>
+                <button onclick="insertMarkdown('```\\n', '\\n```')">Code</button>
+                <button onclick="insertMarkdown('---\\n')">Divider</button>
+            </div>
+            <div id="editor">
+                <textarea id="markdown-content" placeholder="Write your markdown here..."></textarea>
+                <div id="html-preview"></div>
+            </div>
+        </div>
+        
+        <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
+        <script>
+            // Initialize with default content
+            const defaultContent = "$default_content";
+            document.getElementById('markdown-content').value = defaultContent;
+            
+            // Function to insert markdown syntax
+            function insertMarkdown(before, after = '') {
+                const textarea = document.getElementById('markdown-content');
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+                const selectedText = textarea.value.substring(start, end);
+                const newText = before + selectedText + after;
+                
+                textarea.value = 
+                    textarea.value.substring(0, start) + 
+                    newText + 
+                    textarea.value.substring(end);
+                
+                // Update preview
+                updatePreview();
+                
+                // Set cursor position
+                const newCursorPos = start + before.length + selectedText.length + after.length;
+                textarea.focus();
+                textarea.setSelectionRange(newCursorPos, newCursorPos);
+                
+                // Send value to Streamlit
+                sendValueToStreamlit();
+            }
+            
+            // Function to update preview
+            function updatePreview() {
+                const markdownContent = document.getElementById('markdown-content').value;
+                const htmlContent = marked.parse(markdownContent);
+                const sanitizedHtml = DOMPurify.sanitize(htmlContent, {USE_PROFILES: {html: true}});
+                document.getElementById('html-preview').innerHTML = sanitizedHtml;
+            }
+            
+            // Function to send value to Streamlit
+            function sendValueToStreamlit() {
+                const markdownContent = document.getElementById('markdown-content').value;
+                console.log(markdownContent)
+                window.parent.postMessage({
+                    isStreamlitMessage: true,
+                    type: 'streamlit:setComponentValue',
+                    value: markdownContent
+                }, '*');
+            }
+            
+            function initStreamlit() {
+                window.parent.postMessage({
+                    isStreamlitMessage: true,
+                    type: 'streamlit:componentReady'
+                }, '*');
+            }
+            // Listen for acknowledgment from Streamlit
+            window.addEventListener('message', function(event) {
+                console.log(event.data.type)
+                if (event.data.type === 'streamlit:componentReady') {
+                    log('Component ready event received');
+                    // Send initial value
+                    sendValueToStreamlit();
+                } else {
+                    log('Received message: ' + JSON.stringify(event.data).substring(0, 50) + '...');
+                }
+            });
+
+
+            // Event listener for textarea changes
+            document.getElementById('markdown-content').addEventListener('input', function() {
+                updatePreview();
+                sendValueToStreamlit();
+            });
+            
+            // Initialize the component
+            document.addEventListener('DOMContentLoaded', function() {
+                updatePreview();
+                // Initialize Streamlit component after a short delay
+                setTimeout(function() {
+                    initStreamlit();
+                    sendValueToStreamlit();
+                }, 100);
+            });
+
+            // Initial preview update
+            initStreamlit();
+            updatePreview();
+            sendValueToStreamlit()
+        </script>
+    </body>
+    </html>
+    """)
+
+    html_content = template.substitute(default_content=default_content_escaped)
+
+    # Render the HTML component
+    component_value = components.html(html_content, height=500)
+
+    return component_value
