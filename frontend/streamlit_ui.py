@@ -8,6 +8,8 @@ import json
 import re
 import base64
 import aiohttp
+import math
+from datetime import datetime
 from utils import (
     save_token_to_storage,
     navigate_to,
@@ -19,7 +21,8 @@ from utils import (
     upload_note_to_api_server,
     fetch_notes,
     fetch_file,
-    update_note_to_api_server
+    update_note_to_api_server,
+    create_markdown_editor
 )
 
 from config import settings
@@ -57,6 +60,10 @@ class OllamaChatApp:
             st.session_state.list_page_number_modified = False
         if 'edit_note_url' not in st.session_state:
             st.session_state.edit_note_url = None
+        if 'prompt_with_docs' not in st.session_state:
+            st.session_state.prompt_with_docs = {}
+        if 'right_sidebar_rendered' not in st.session_state:
+            st.session_state.right_sidebar_rendered = False
 
     def setup_streamlit_page_layout(self):
         self.qna_tab = st
@@ -238,21 +245,14 @@ Answer: """
         """Callback function to handle selection changes"""
         # Store the selection in session state
         value = st.session_state[key]
+        st.session_state.right_sidebar_rendered = False
         if value == "Include":
             st.session_state.include_selected.append(source)
         else:
             st.session_state.exclude_selected.append(source)
 
-    async def process_response(self, prompt: str, context_aware: bool):
-
-        context = None
-
-        if len(st.session_state.messages) > 1:
-            msgs = [msg["content"] for msg in st.session_state.messages]
-            msgstr = '\n'.join(msgs)
-            prompt = msgstr + "\n" + prompt
-
-        docs = fetch_documents(prompt)
+    def display_references(self, index=0):
+        docs = st.session_state.prompt_with_docs.get("docs", [])
 
         if docs:
             context = "\n\n".join(
@@ -287,30 +287,53 @@ Answer: """
                         src = ref['filename']
                     else:
                         src = ref['source']
-                    with st.expander(f"Reference {i} (Score: {ref['score']:.2f}, Page: {ref['page']})", expanded=(i == 1)):
+                    with st.expander(
+                        f"Reference {i} (Score: {ref['score']:.2f}, Page: {ref['page']})",
+                        expanded=(i == 1)
+                    ):
+                        st.session_state.right_sidebar_rendered = True
                         st.radio(
                             src,
                             options=["Include", "Exclude"],
-                            key=f"radio_{i}",
+                            key=f"radio_{index}_{i}",
                             horizontal=True,
                             index=None,
                             on_change=self.handle_selection_change,
-                            args=(ref['source'], f"radio_{i}",)
+                            args=(ref['source'], f"radio_{index}_{i}",)
                         )
                         if ref['text']:
                             st.markdown(ref['text'])
                         if ref['filename']:
 
                             cols = st.columns([5, 3])
-                            cols[0].button("View Document", key=f"btn_{i}", on_click=self.render_file_sync, args=(
-                                ref['source'],))
+                            cols[0].button(
+                                "View Document",
+                                key=f"btn_{index}_{i}",
+                                on_click=self.render_file_sync,
+                                args=(ref['source'],)
+                            )
                             if ref['source_type'] == "note":
                                 cols[1].button(
                                     "Edit",
-                                    key=f"edit_note_button_{i}",
+                                    key=f"edit_note_button_{index}_{i}",
                                     on_click=self.edit_note_btn_clicked,
                                     args=(ref['source'],)
                                 )
+
+    async def process_response(self, docs, prompt: str):
+
+        context_aware = st.session_state.context_aware
+        context = None
+
+        if len(st.session_state.messages) > 1:
+            msgs = [msg["content"] for msg in st.session_state.messages]
+            msgstr = '\n'.join(msgs)
+            prompt = msgstr + "\n" + prompt
+
+        if docs:
+            context = "\n\n".join(
+                [doc["page_content"] for doc in docs])
+
         with self.main_content.chat_message("assistant"):
             message_placeholder = st.empty()
             self.qna_tab.container().empty()
@@ -331,6 +354,13 @@ Answer: """
                 {"role": "assistant", "content": full_response})
 
     def render_file_sync(self, file_url):
+        # when this even is fired, somehow
+        # right sidebar content vanishes.
+        # To prevent this setting this variable to False
+        # meaning right sidebar has vanished.
+        # In run() we use this variable to render sidebar again
+        # if it has vanished
+        st.session_state.right_sidebar_rendered = False
         with self.main_content:
             with st.spinner("Loading document..."):
                 st.session_state.is_generating = False
@@ -417,30 +447,45 @@ Answer: """
 
         return prompt
 
+    def format_timestamp(self, timestamp_str):
+        # Parse the ISO format timestamp
+        dt = datetime.fromisoformat(timestamp_str)
+
+        # Get the day and add the appropriate ordinal suffix
+        day = dt.day
+        if 4 <= day <= 20 or 24 <= day <= 30:
+            suffix = "th"
+        else:
+            suffix = {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
+
+        # Format the datetime with the day suffix
+        formatted_date = dt.strftime(f"%-d{suffix} %B %Y %-I:%M %p")
+
+        return formatted_date
+
     def display_notes(self):
 
-        PAGE_SIZE = settings.LIST_PAGE_SIZE
+        page_size = settings.LIST_PAGE_SIZE
 
         # Initialize session state for page number if not exists
         current_page = st.session_state.list_page_number
 
         # Calculate offset for API call
-        offset = (current_page - 1) * PAGE_SIZE
+        offset = (current_page - 1) * page_size
 
         # Fetch only the notes for the current page
-        response = fetch_notes(offset, PAGE_SIZE)
+        response = fetch_notes(offset, page_size)
         records = response["notes"]
         total_notes = response["total"]
 
-        import math
-        total_pages = math.ceil(total_notes / PAGE_SIZE)
+        total_pages = math.ceil(total_notes / page_size)
 
-        col1, col2 = self.main_content.columns([3, 1])
+        col1, col2 = self.main_content.columns([5, 2])
 
         with col1:
             # Show current range of notes being displayed
             start_idx = offset + 1
-            end_idx = min(offset + PAGE_SIZE, total_notes)
+            end_idx = min(offset + page_size, total_notes)
             st.write(f"Showing notes {start_idx}-{end_idx} of {total_notes}")
 
         with col2:
@@ -460,40 +505,42 @@ Answer: """
             st.session_state.list_page_number_modified = True
             st.rerun()
 
-        header_cols = self.main_content.columns([1, 5, 5, 5, 2, 2])
+        header_cols = self.main_content.columns([1, 5, 5, 2, 2])
         header_cols[0].write("**ID**")
         header_cols[1].write("**Title**")
-        header_cols[2].write("**FILENAME**")
-        header_cols[3].write("**Updated At**")
-        header_cols[4].write("**Action**")
+        header_cols[2].write("**Updated At**")
+        header_cols[3].write("**Action**")
 
         # Add a separator
         self.main_content.markdown("---")
 
         # Display each note
         for i, note in enumerate(records):
-            cols = self.main_content.columns([1, 5, 5, 5, 2, 2])
+            cols = self.main_content.columns([1, 5, 5, 2, 2])
 
             # Display ID
             cols[0].write(f"{i+offset+1}")
 
             # Display Title
-            cols[1].write(note["title"])
+            title = note["title"]
+            cols[1].write(title)
 
-            cols[2].write(note["filename"])
+            # filename = note["filename"].replace("-", " ")
+            # cols[2].write(filename)
 
             url = note["url"]
             # View button
 
-            cols[3].write(note["updated_at"])
+            updated_at = self.format_timestamp(note["updated_at"])
+            cols[2].write(updated_at)
 
-            cols[4].button(
+            cols[3].button(
                 "View",
                 key=f"view_note_{note['id']}",
                 on_click=self.render_note_sync,
                 args=(url, note["id"], note["filename"]))
 
-            cols[5].button(
+            cols[4].button(
                 "Edit",
                 key=f"edit_note_button_{note['id']}",
                 on_click=self.edit_note_btn_clicked,
@@ -503,6 +550,7 @@ Answer: """
     def edit_note_btn_clicked(self, file_url):
         st.session_state.view_mode = "edit-note"
         st.session_state.edit_note_url = file_url
+        st.session_state.right_sidebar_rendered = False
 
     def edit_notes(self, file_url):
         filename = file_url.rsplit("/")[-1]
@@ -510,12 +558,12 @@ Answer: """
         with self.main_content:
             updated_content = self.main_content.text_area(
                 f"Edit {filename} in markdown format:",
-                height=300,
-                value=content
+                value=content,
+                height=600
             )
             cols = self.main_content.columns([1, 1, 2, 2])
             if cols[0].button(
-                    "← Back to List",
+                    "← Notes",
                     key="back_to_list_button"
             ):
                 st.session_state.view_mode = "notes-list"
@@ -525,6 +573,7 @@ Answer: """
                     key="note_save_button"
             ):
                 if updated_content:
+                    st.session_state.right_sidebar_rendered = False
                     updated = update_note_to_api_server(
                         updated_content, file_url)
                     if updated:
@@ -670,9 +719,9 @@ Answer: """
         self.display_chat_history()
 
         if context_aware == "context aware":
-            context_aware_search = True
+            st.session_state.context_aware = True
         else:
-            context_aware_search = False
+            st.session_state.context_aware = False
 
         if prompt := st.chat_input("Ask a question about the uploaded document"):
             st.session_state.messages.append(
@@ -685,11 +734,21 @@ Answer: """
             else:
                 st.session_state.view_mode = "ollama-chat"
                 prompt = self.set_source_type(prompt)
-                st.session_state.is_generating = True
+
                 st.session_state.context_window_size = input_context_window_size
-                asyncio.run(self.process_response(
-                    prompt, context_aware_search))
+                docs = fetch_documents(prompt)
+
+                st.session_state.prompt_with_docs['docs'] = docs
+                st.session_state.prompt_with_docs['prompt'] = prompt
+
+                self.display_references()
+                st.session_state.is_generating = True
+                asyncio.run(self.process_response(docs, prompt))
                 st.session_state.is_generating = False
+
+        if st.session_state.prompt_with_docs and not st.session_state.right_sidebar_rendered:
+            self.display_references(1)
+            # print("hello")
 
         if (st.session_state.view_mode == "notes-list"
                 or st.session_state.list_page_number_modified
@@ -708,6 +767,10 @@ Answer: """
         if st.sidebar.button("Clear Chat"):
             st.session_state.messages = []
             self.main_content.empty()
+            self.right_sidebar.empty()
+            st.session_state.source_type = None
+            st.empty()
+            st.session_state.prompt_with_docs.clear()
             st.rerun()
 
         if st.sidebar.button(f"Logout ({st.session_state.username}) ⬅️"):
