@@ -28,12 +28,11 @@ def save_file(content, title):
     doc_id = str(uuid.uuid4())
 
     # Create a filename
-    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
 
     saved = False
     # Replace spaces with hyphen and remove special characters
     safe_title = ''.join(c if c.isalnum() else '-' for c in title)
-    filename = f"{safe_title}-{timestamp}.md"
+    filename = f"{safe_title}-{doc_id}.md"
 
     file_path = os.path.join(settings.UPLOAD_DIR, filename)
 
