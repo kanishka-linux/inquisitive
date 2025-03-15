@@ -37,7 +37,6 @@ class FileUpload(Base):
     content_type = Column(String)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
-    upload_time = Column(DateTime, default=datetime.utcnow)
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
 
     owner = relationship("User", back_populates="files")
