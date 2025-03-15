@@ -26,7 +26,7 @@ class FileUploadResponse(schemas.BaseModel):
     filename: str
     file_url: str
     status: str
-    upload_time: datetime
+    created_at: datetime
 
     class Config:
         from_attributes = True
@@ -39,7 +39,7 @@ class FileUploadDB(schemas.BaseModel):
     file_path: str
     file_url: str
     content_type: str
-    upload_time: datetime
+    created_at: datetime
     user_id: int
 
     class Config:
