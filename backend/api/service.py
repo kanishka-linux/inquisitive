@@ -1,5 +1,5 @@
 # backend/auth/service.py
-from datetime import datetime
+from datetime import datetime, timezone
 from jose import jwt
 
 from backend.config import settings
@@ -26,7 +26,8 @@ def validate_jwt_token(token: str) -> dict:
 
         # Check token expiration
         exp = payload.get("exp")
-        if exp is None or datetime.utcnow() > datetime.fromtimestamp(exp):
+        utc_now = datetime.now(timezone.utc)
+        if exp is None or utc_now > datetime.fromtimestamp(exp, tz=timezone.utc):
             return {"valid": False}
 
         return {
