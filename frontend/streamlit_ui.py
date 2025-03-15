@@ -764,8 +764,8 @@ Answer: """
             # print("hello")
 
         if (st.session_state.view_mode == "notes-list"
-                or st.session_state.list_page_number_modified
-            ):
+                    or st.session_state.list_page_number_modified
+                ):
             st.session_state.list_page_number_modified = False
             self.display_notes()
 
@@ -787,14 +787,17 @@ Answer: """
             st.rerun()
 
         with st.sidebar:
-            if st.sidebar.button("Select source"):
-                st.sidebar.radio(
-                    "Choose source type:",
-                    ["/none", "/files", "/links", "/notes"],
-                    key="source_radio_button",
-                    on_change=self.set_source_type_radio_button,
-                    args=("source_radio_button", )
-                )
+            # if st.sidebar.button("Select source"):
+            #    st.sidebar.radio(
+            #        "Choose source type:",
+            #        ["/none", "/files", "/links", "/notes"],
+            #        key="source_radio_button",
+            #        on_change=self.set_source_type_radio_button,
+            #        args=("source_radio_button", )
+            #    )
+            if st.sidebar.button("Tips"):
+                st.markdown(
+                    "Shortcuts\n\n`/notes`\n\n`/files`\n\n`/links`\n\n`/notes-list`\n\nStart prompt with above shortcuts for focussed search")
 
         if st.sidebar.button(f"Logout ({st.session_state.username}) ⬅️"):
             navigate_to("logout")
