@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     EMBEDDINGS_MODEL: str = "chroma/all-minilm-l6-v2-f32"
 
     VECTOR_STORE_PERSISTS_DIRECTORY: str = "./chroma_db"
+    WINDOW_SIZE_MULTIPLIER: int = 10
     DEFAULT_HEADERS: Dict[str, str] = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
