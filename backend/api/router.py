@@ -154,13 +154,22 @@ async def upload_file(
     await session.commit()
     await session.refresh(db_file)
 
-    await file_processor_queue.put((file_path, unique_filename, file_url, db_file.id, user.email, "file"))
+    await file_processor_queue.put(
+        (
+            file_path,
+            unique_filename,
+            file_url,
+            db_file.id,
+            user.email,
+            "file"
+        )
+    )
     # Return the file URL to the client
     return {
         "filename": file.filename,
         "file_url": file_url,
         "status": db_file.status,
-        "upload_time": db_file.upload_time
+        "created_at": db_file.created_at
     }
 
 
@@ -382,6 +391,8 @@ async def get_file(
     # Check if the file exists on disk
     file_path = Path(file_record.file_path)
     if not file_path.exists():
+        file_path = os.path.join(settings.UPLOAD_DIR, file_record.filename)
+    if not file_path.exists():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="File not found on server"
@@ -471,6 +482,8 @@ async def search_documents(
 ):
     try:
 
+        window_size = request.window_size
+        source_type = request.source_type
         docs = fetch_documents(
             request.include_sources,
             request.exclude_sources,
@@ -481,7 +494,14 @@ async def search_documents(
         )
         # Format results
         results = []
+        uniq_sources = set()
         for doc, score in docs:
+            source = doc.metadata.get("source", "")
+            if source_type == "link" and len(uniq_sources) >= window_size:
+                break
+            if source_type == "link" and source in uniq_sources:
+                continue
+
             results.append(
                 DocumentResult(
                     page_content=doc.page_content,
@@ -490,6 +510,11 @@ async def search_documents(
                 )
             )
 
+            if source not in uniq_sources:
+                uniq_sources.add(source)
+
+        logger.info(
+            f"doc received = {len(docs)}, uniq_sources = {len(uniq_sources)}")
         return DocumentSearchResponse(
             documents=results,
             count=len(results)

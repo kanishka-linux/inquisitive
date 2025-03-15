@@ -94,6 +94,11 @@ def fetch_documents(
         prompt,
         source_type=None):
 
+    if source_type == 'link':
+        window_size_modified = window_size * settings.WINDOW_SIZE_MULTIPLIER
+    else:
+        window_size_modified = window_size
+
     filter_dict = {}
     if exclude_selected and include_selected:
         filter_dict = {
@@ -147,7 +152,7 @@ def fetch_documents(
     docs = vector_store.similarity_search_with_relevance_scores(
         prompt,
         filter=filter_dict,
-        k=window_size  # Retrieve more relevant chunks
+        k=window_size_modified  # Retrieve more relevant chunks
     )
 
     # TODO: Add mmr search later
