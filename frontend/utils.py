@@ -67,7 +67,6 @@ def validate_token(token):
 
         if response.status_code == 200:
             data = response.json()
-            print(data)
             return data.get("valid", False)
 
         return False

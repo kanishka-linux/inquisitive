@@ -274,7 +274,13 @@ Answer: """
                 }
                 references.append(reference)
 
-            with self.right_sidebar:
+            # index field is used for controlling
+            # where to display the references
+            if index == 2:
+                ref = self.main_content
+            else:
+                ref = self.right_sidebar
+            with ref:
                 if st.session_state.include_selected:
                     st.info(
                         f"Included reference: {','.join(st.session_state.include_selected)}", icon="ℹ️")
@@ -287,9 +293,18 @@ Answer: """
                         src = ref['filename']
                     else:
                         src = ref['source']
+                    if index == 2:
+                        expand = True
+                    elif st.session_state.discussion_mode == "only-links":
+                        # It means, discussion mode is show only links
+                        # but the references will load on right sidebar
+                        # so we don't want to auto expand them
+                        expand = False
+                    else:
+                        expand = (i == 1)
                     with st.expander(
                         f"Reference {i} (Score: {ref['score']:.2f}, Page: {ref['page']})",
-                        expanded=(i == 1)
+                        expanded=expand
                     ):
                         st.session_state.right_sidebar_rendered = True
                         st.radio(
@@ -320,9 +335,27 @@ Answer: """
                                     args=(ref['source'],)
                                 )
 
+    def format_resource_list(self, docs):
+        formatted_text = ""
+        for i, resource in enumerate(docs):
+            metadata = resource.get("metadata")
+            source_type = metadata.get("source_type")
+            title = metadata.get("title", "No Title")
+            url = "#"
+            if source_type == "link":
+                url = metadata.get("source", "#")
+
+            text = resource.get("page_content", "No description available")
+
+            # Format each item with markdown
+            formatted_text += f"#### {i+1} [{title}]({url})\n"
+            formatted_text += f"{text}\n\n---\n"
+
+        return formatted_text
+
     async def process_response(self, docs, prompt: str):
 
-        context_aware = st.session_state.context_aware
+        discussion_mode = st.session_state.discussion_mode
         context = None
 
         if len(st.session_state.messages) > 1:
@@ -339,10 +372,15 @@ Answer: """
             self.qna_tab.container().empty()
             full_response = ""
 
-            if context_aware and not context:
+            if discussion_mode == "context-aware" and not context:
                 full_response = "I couldn't find relevant information in the uploaded document to answer your question."
                 message_placeholder.markdown(full_response)
+            elif discussion_mode == "only-links":
+                message_placeholder.markdown(
+                    f"Total references found: {len(docs)}")
+                self.display_references(2)
             else:
+                context_aware = True if discussion_mode == "context_aware" else False
                 async for response_chunk in self.get_llm_response(prompt, context, context_aware):
                     full_response += response_chunk
                     message_placeholder.markdown(full_response + "▌")
@@ -613,9 +651,10 @@ Answer: """
                 )
             else:
                 st.info("Make sure Ollama is running on your machine.")
-            context_aware = st.radio(
-                "Choose discussion type:",
-                ["context aware", "non-context aware"]
+            discussion_mode = st.radio(
+                "Choose discussion mode:",
+                ["context aware", "non-context aware",
+                    "no discussion (only links)"]
             )
 
             input_context_window_size = st.number_input(
@@ -731,10 +770,12 @@ Answer: """
         # Main chat interface
         self.display_chat_history()
 
-        if context_aware == "context aware":
-            st.session_state.context_aware = True
+        if discussion_mode == "context aware":
+            st.session_state.discussion_mode = "context-aware"
+        elif discussion_mode == "non-context aware":
+            st.session_state.discussion_mode = "non-context-aware"
         else:
-            st.session_state.context_aware = False
+            st.session_state.discussion_mode = "only-links"
 
         if prompt := st.chat_input("Ask a question about the uploaded document"):
             st.session_state.messages.append(
@@ -764,8 +805,8 @@ Answer: """
             # print("hello")
 
         if (st.session_state.view_mode == "notes-list"
-                    or st.session_state.list_page_number_modified
-                ):
+            or st.session_state.list_page_number_modified
+            ):
             st.session_state.list_page_number_modified = False
             self.display_notes()
 
