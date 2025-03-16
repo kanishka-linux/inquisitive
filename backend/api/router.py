@@ -154,6 +154,11 @@ async def upload_file(
     await session.commit()
     await session.refresh(db_file)
 
+    if file.filename.endswith('.md'):
+        source_type = "note"
+    else:
+        source_type = "file"
+
     await file_processor_queue.put(
         (
             file_path,
@@ -161,7 +166,7 @@ async def upload_file(
             file_url,
             db_file.id,
             user.email,
-            "file"
+            source_type
         )
     )
     # Return the file URL to the client

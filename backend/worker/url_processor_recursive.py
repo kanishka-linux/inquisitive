@@ -78,10 +78,10 @@ async def crawl_url(url, user, headers):
                     db_link.status = ProcessingStatus.FINISHED
                     await db.commit()
 
-                    recursive_url_processing_queue.task_done()
                     logger.info(
                         f"Successfully processed URL {source} for user {user.email}")
 
+                recursive_url_processing_queue.task_done()
             except Exception as e:
                 logger.error(
                     f"Error crawling URL {url} for user {user.email}: {str(e)}")
