@@ -11,3 +11,4 @@ users.db
 inquisitive.db
 chroma_db/
 uploads/
+.DS_Store
