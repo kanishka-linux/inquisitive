@@ -136,35 +136,54 @@ async def upload_file(
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    # Generate a URL for the file
-    file_url = f"/file/{unique_filename}"
-
-    # Create a database entry
-    db_file = FileUpload(
-        filename=unique_filename,
-        original_filename=file.filename,
-        file_path=str(file_path),
-        file_url=file_url,
-        status=ProcessingStatus.PENDING,
-        content_type=file.content_type,
-        user_id=user.id
-    )
-
-    session.add(db_file)
-    await session.commit()
-    await session.refresh(db_file)
-
     if file.filename.endswith('.md'):
         source_type = "note"
+
+        file_url = f"/file/note/{unique_filename}"
+
+        db_note = Note(
+            url=file_url,
+            title=file.filename,
+            filename=unique_filename,
+            file_path=str(file_path),
+            status=ProcessingStatus.PENDING,
+            user_id=user.id
+        )
+        session.add(db_note)
+        await session.commit()
+        await session.refresh(db_note)
+
+        file_id = db_note.id
+        created_at = db_note.created_at
+
     else:
         source_type = "file"
+
+        file_url = f"/file/{unique_filename}"
+
+        # Create a database entry
+        db_file = FileUpload(
+            filename=unique_filename,
+            original_filename=file.filename,
+            file_path=str(file_path),
+            file_url=file_url,
+            status=ProcessingStatus.PENDING,
+            content_type=file.content_type,
+            user_id=user.id
+        )
+        session.add(db_file)
+        await session.commit()
+        await session.refresh(db_file)
+
+        file_id = db_file.id
+        created_at = db_file.created_at
 
     await file_processor_queue.put(
         (
             file_path,
             unique_filename,
             file_url,
-            db_file.id,
+            file_id,
             user.email,
             source_type
         )
@@ -173,8 +192,8 @@ async def upload_file(
     return {
         "filename": file.filename,
         "file_url": file_url,
-        "status": db_file.status,
-        "created_at": db_file.created_at
+        "status": ProcessingStatus.PENDING,
+        "created_at": created_at
     }
 
 
