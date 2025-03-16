@@ -581,6 +581,7 @@ def create_markdown_editor(default_content, key, height):
     html_content = template.substitute(default_content=default_content_escaped)
 
     # Render the HTML component
-    component_value = components.html(html_content, height=500)
+    #component_value = components.html(html_content, height=500)
 
-    return component_value
+    #return component_value
+    return html_content
