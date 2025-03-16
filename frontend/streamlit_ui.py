@@ -64,6 +64,8 @@ class OllamaChatApp:
             st.session_state.prompt_with_docs = {}
         if 'right_sidebar_rendered' not in st.session_state:
             st.session_state.right_sidebar_rendered = False
+        if 'discussion_mode' not in st.session_state:
+            st.session_state.discussion_mode = "context-aware"
 
     def setup_streamlit_page_layout(self):
         self.qna_tab = st
@@ -380,7 +382,7 @@ Answer: """
                     f"Total references found: {len(docs)}")
                 self.display_references(2)
             else:
-                context_aware = True if discussion_mode == "context_aware" else False
+                context_aware = True if discussion_mode == "context-aware" else False
                 async for response_chunk in self.get_llm_response(prompt, context, context_aware):
                     full_response += response_chunk
                     message_placeholder.markdown(full_response + "▌")
