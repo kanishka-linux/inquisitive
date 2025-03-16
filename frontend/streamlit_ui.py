@@ -777,6 +777,8 @@ Answer: """
                 st.session_state.is_generating = False
                 st.rerun()
 
+        with st.sidebar:
+            st.sidebar.divider()
         if st.sidebar.button("Clear Chat"):
             st.session_state.messages = []
             self.main_content.empty()
