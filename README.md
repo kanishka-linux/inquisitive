@@ -68,7 +68,7 @@ $ streamlit run frontend/app.py
 
 Organizing notes and personal documents seems to be a simple task, but I myself struggled a lot with it on how to do it properly. Finally my setup was just plain text/markdown files and open the folder with vim/nvim and use fzf plugin for fuzzy search within the folder.
 
-It served me well over the years, but since last couple of months I was mulling over integration with local LLM/RAG based system for somewhat better organization of personal knowledge base. I looked into existing solutions available, but I couldn't find integrated solutions that would combine notes/local documents/web-links and getting list of references along with a way to display various notes and files inline, so that it will be easier to cross-verify sources from which information is coming. I also felt, the application needs to have some basic authentication capabilities so that one can self-host it, allowing multiple users to share the instance and each having their own unique collection. So After all these requirements in mind, finally I decided to build Inquisitive.
+It served me well over the years, but since last couple of months I was mulling over integration with local LLM/RAG based system for somewhat better organization of personal knowledge base. I looked into existing solutions available, but I couldn't find integrated solutions that would combine notes/local documents/web-links and getting list of references along with a way to display varrious notes and files inline, so that it will be easier to cross-verify sources from which information is coming. I also felt, the application needs to have some basic authentication capabilities so that one can self-host it, allowing multiple users to share the instance and each having their own unique collection. So After all these reequirements in mind, finally I decided to build Inquisitive.
 
 ## Technical choices
 
@@ -109,3 +109,11 @@ Currently - Inquisitive has following broad components
 ## Sequence diagram for general flow
 
 ![sequence-diagram](/images/sequence-diagram.png)
+
+## So After building, is it really serving the purpose it is supposed to serve?
+
+* I fed thousands of links to it (from my bookmark) which I've accumulated over the years. I was quite a bit surprised to find that, after using inquisitive with focussed search mode for  links i.e. `/links`, I was able to get some really good links from my collection which I might have forgotten over a period of time. And I didn't even feel like adding tags or anything extra to extract relevant results. It seems like one can even build personal search engine, in case one has lots of links in the bookmark.
+
+* Adding notes - After feeding my notes to Inquisitive, I started retrieving information quickly from my notes (`/notes`). It is still early to comment about this feature. But having the ability to see notes in markdown and edit it and refresh the updated data in vector db on edit, seeing all the reference notes in the sidebar - made things lot more convenient when it came to searching and organizing notes. My only gripe is, not so good editor for markdwon. Currently I'm using Streamlit's in-built text-area component for adding notes, which could have been better.
+
+* Discussion/QnA session with LLM  - Quality of this depends a lot upon the model. Models with 7B+ parameter give really good result provided the machine has dedicated gpu. For machines with only cpu, models with 1-2B+ parameters can give response a bit quickly, but they are mostly irrelevant and not upto the mark and too much hallucination. So machines with only CPU, can use Inquisitive mainly for searching purpose but not for relevant discussion/QnA purpose. People can try out multiple models and see what works for them best.
