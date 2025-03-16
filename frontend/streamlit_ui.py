@@ -533,6 +533,11 @@ Answer: """
 
         total_pages = math.ceil(total_notes / page_size)
 
+        # Edge case where notes are still not created
+        # but we are trying to list notes
+        if total_pages == 0:
+            total_pages = 1
+
         col1, col2 = self.main_content.columns([5, 2])
 
         with col1:
