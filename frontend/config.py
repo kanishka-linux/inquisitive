@@ -6,6 +6,7 @@ from typing import Dict
 class Settings(BaseSettings):
     API_URL: str = "http://localhost:8000"
     LIST_PAGE_SIZE: int = 5
+    ALLOW_AUTO_USER_REGISTER: bool = True
     UPLOAD_FILE_TYPES: list[str] = ['txt', 'pdf', "md", "json", "sh"]
     DEFAULT_HEADERS: Dict[str, str] = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",

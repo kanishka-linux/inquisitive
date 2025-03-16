@@ -43,6 +43,8 @@ def login_user(email, password):
 
 def register_user(email, password):
     """Register a new user with just email and password"""
+    if not settings.ALLOW_AUTO_USER_REGISTER:
+        return False, "Registration not allowed. Please contact the Admin"
     try:
         response = requests.post(
             f"{settings.API_URL}/auth/register",
