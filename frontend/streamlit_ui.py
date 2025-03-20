@@ -639,6 +639,8 @@ Answer: """
                     else:
                         st.error("error occurred when updating file")
 
+                    st.rerun()
+
     def run(self):
         """Main application loop"""
 
