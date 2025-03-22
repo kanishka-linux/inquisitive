@@ -4,8 +4,8 @@ import requests
 import streamlit as st
 from streamlit_js_eval import streamlit_js_eval
 from config import settings
-import streamlit.components.v1 as components
 from string import Template
+import time
 
 
 def init_session_state():
@@ -30,7 +30,12 @@ def save_token_to_storage(token, username):
 def load_token_from_storage():
     """Load token from browser local storage"""
     js_code = "localStorage.getItem('auth_data');"
-    auth_data_json = streamlit_js_eval(js_expressions=js_code, key="get_token")
+    for i in range(0, 3):
+        auth_data_json = streamlit_js_eval(
+            js_expressions=js_code, key=f"get_token_{i}")
+        time.sleep(0.1)
+        if auth_data_json:
+            break
 
     if auth_data_json:
         try:

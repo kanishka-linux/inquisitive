@@ -811,7 +811,6 @@ Answer: """
 
         if st.session_state.prompt_with_docs and not st.session_state.right_sidebar_rendered:
             self.display_references(1)
-            # print("hello")
 
         if (st.session_state.view_mode == "notes-list"
             or st.session_state.list_page_number_modified
@@ -839,14 +838,6 @@ Answer: """
             st.rerun()
 
         with st.sidebar:
-            # if st.sidebar.button("Select source"):
-            #    st.sidebar.radio(
-            #        "Choose source type:",
-            #        ["/none", "/files", "/links", "/notes"],
-            #        key="source_radio_button",
-            #        on_change=self.set_source_type_radio_button,
-            #        args=("source_radio_button", )
-            #    )
             if st.sidebar.button("Tips"):
                 st.markdown(
                     "Shortcuts\n\n`/notes`\n\n`/files`\n\n`/links`\n\n`/notes-list`\n\nStart prompt with above shortcuts for focussed search")
