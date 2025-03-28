@@ -53,7 +53,8 @@ from backend.api.schemas import (
     NoteList,
     NoteResponse,
     NoteUpdateRequest,
-    NoteUpdateResponse
+    NoteUpdateResponse,
+    LinksList
 )
 from backend.api.service import validate_jwt_token
 from backend.database import get_async_session
@@ -483,6 +484,52 @@ async def submit_links_bulk(
             failed_urls.append(str(url))
 
     return BulkLinkResponse(links_added=len(successful_links))
+
+
+# Links List endpoint
+@link_router.get("/", response_model=LinksList, status_code=200)
+async def list_links(
+    skip: int = 0,
+    limit: int = 100,
+    user: User = Depends(current_active_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    stmt = (
+        select(Link)
+        .where(Link.user_id == user.id)
+        .order_by(desc(Link.updated_at))
+        .offset(skip)
+        .limit(limit)
+    )
+
+    result = await session.execute(stmt)
+    records = result.scalars().all()
+
+    count_stmt = (
+        select(func.count())
+        .select_from(Link)
+        .where(Link.user_id == user.id)
+    )
+
+    total_count = await session.execute(count_stmt)
+    total_count = total_count.scalar() or 0
+
+    result = [
+        LinkResponse(
+            url=record.url,
+            id=record.id,
+            title=record.title,
+            favicon=record.favicon,
+            status=record.status,
+            created_at=record.created_at,
+            updated_at=record.updated_at
+        ) for record in records
+    ]
+    # Return the file URL to the client
+    return LinksList(
+        links=result,
+        total=total_count
+    )
 
 
 # Recursively Crawl the link

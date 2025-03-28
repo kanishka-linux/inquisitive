@@ -66,6 +66,7 @@ class LinkResponse(LinkBase):
     favicon: Optional[str] = None
     status: str
     created_at: datetime
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -153,4 +154,9 @@ class NoteResponse(schemas.BaseModel):
 
 class NoteList(schemas.BaseModel):
     notes: List[NoteResponse]
+    total: int
+
+
+class LinksList(schemas.BaseModel):
+    links: List[LinkResponse]
     total: int
