@@ -21,6 +21,7 @@ from utils import (
     upload_note_to_api_server,
     fetch_notes,
     fetch_file,
+    fetch_files,
     update_note_to_api_server,
     fetch_links
 )
@@ -60,6 +61,24 @@ SVG_ICON = """
          fill="none"/>
 
 </svg>
+"""
+
+TIPS = """
+### Prompt Shortcuts for focussed  search in specific categories
+
+* `/notes search-query`
+
+* `/files search-query`
+
+* `/links search-query`
+
+### Prompt Shortcuts for listing
+
+* `/notes-list`
+
+* `/links-list`
+
+* `/files-list`
 """
 
 
@@ -536,6 +555,8 @@ Answer: """
         return value
 
     def format_timestamp(self, timestamp_str):
+        if timestamp_str is None:
+            return "File is still under processing"
         # Parse the ISO format timestamp
         dt = datetime.fromisoformat(timestamp_str)
 
@@ -550,6 +571,84 @@ Answer: """
         formatted_date = dt.strftime(f"%-d{suffix} %B %Y %-I:%M %p")
 
         return formatted_date
+
+    def display_files(self):
+
+        page_size = settings.LIST_PAGE_SIZE
+
+        # Initialize session state for page number if not exists
+        current_page = st.session_state.list_page_number
+
+        # Calculate offset for API call
+        offset = (current_page - 1) * page_size
+
+        # Fetch only the notes for the current page
+        response = fetch_files(offset, page_size)
+        records = response["files"]
+        total_files = response["total"]
+
+        total_pages = math.ceil(total_files / page_size)
+
+        # Edge case where notes are still not created
+        # but we are trying to list notes
+        if total_pages == 0:
+            total_pages = 1
+
+        col1, col2 = self.main_content.columns([5, 2])
+
+        with col1:
+            # Show current range of notes being displayed
+            start_idx = offset + 1
+            end_idx = min(offset + page_size, total_files)
+            st.write(f"Showing files {start_idx}-{end_idx} of {total_files}")
+
+        with col2:
+            # Simple page input
+            page_input = st.number_input(
+                "Go to page",
+                min_value=1,
+                max_value=total_pages,
+                value=current_page,
+                step=1,
+                key="page_input"
+            )
+
+        # Update page number when input changes
+        if page_input != current_page:
+            st.session_state.list_page_number = page_input
+            st.session_state.list_page_number_modified = True
+            st.rerun()
+
+        header_cols = self.main_content.columns([1, 5, 5, 2])
+        header_cols[0].write("**ID**")
+        header_cols[1].write("**Title**")
+        header_cols[2].write("**Updated At**")
+        header_cols[3].write("**Action**")
+
+        # Add a separator
+        self.main_content.markdown("---")
+
+        # Display each uploaded file
+        for i, record in enumerate(records):
+            cols = self.main_content.columns([1, 5, 5, 2])
+
+            # Display ID
+            cols[0].write(f"{i+offset+1}")
+
+            # Display Title
+            title = record["filename"]
+            cols[1].write(title)
+
+            url = record["file_url"]
+
+            updated_at = self.format_timestamp(record["updated_at"])
+            cols[2].write(updated_at)
+
+            cols[3].button(
+                "View",
+                key=f"view_file_{i+offset+1}",
+                on_click=self.render_file_sync,
+                args=(url,))
 
     def display_notes(self):
 
@@ -658,7 +757,7 @@ Answer: """
         total_pages = math.ceil(total_links / page_size)
 
         # Edge case where links are still not created
-        # but we are trying to list notes
+        # but we are trying to list links
         if total_pages == 0:
             total_pages = 1
 
@@ -668,7 +767,7 @@ Answer: """
             # Show current range of notes being displayed
             start_idx = offset + 1
             end_idx = min(offset + page_size, total_links)
-            st.write(f"Showing notes {start_idx}-{end_idx} of {total_links}")
+            st.write(f"Showing links {start_idx}-{end_idx} of {total_links}")
 
         with col2:
             # Simple page input
@@ -910,6 +1009,8 @@ Answer: """
                 st.session_state.view_mode = "notes-list"
             elif prompt.startswith("/links-list"):
                 st.session_state.view_mode = "links-list"
+            elif prompt.startswith("/files-list"):
+                st.session_state.view_mode = "files-list"
             else:
                 st.session_state.view_mode = "ollama-chat"
                 prompt = self.set_source_type(prompt)
@@ -928,12 +1029,14 @@ Answer: """
         if st.session_state.prompt_with_docs and not st.session_state.right_sidebar_rendered:
             self.display_references(1)
 
-        if (st.session_state.view_mode in ["notes-list", "links-list"]
+        if (st.session_state.view_mode in ["notes-list", "links-list", "files-list"]
             or st.session_state.list_page_number_modified
             ):
             st.session_state.list_page_number_modified = False
             if st.session_state.view_mode == "notes-list":
                 self.display_notes()
+            elif st.session_state.view_mode == "files-list":
+                self.display_files()
             else:
                 self.display_links()
 
@@ -959,8 +1062,7 @@ Answer: """
                     st.session_state.prompt_with_docs.clear()
                     st.rerun()
                 if col4.button("Tips", use_container_width=True):
-                    st.markdown(
-                        "Shortcuts\n\n`/notes`\n\n`/files`\n\n`/links`\n\n`/notes-list`\n\n`/links-list`\n\nStart prompt with above shortcuts for focussed search")
+                    st.markdown(TIPS)
 
         if st.sidebar.button(f"Logout ({st.session_state.username}) ⬅️", use_container_width=True):
             navigate_to("logout")
