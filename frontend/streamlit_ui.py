@@ -27,6 +27,41 @@ from utils import (
 
 from config import settings
 
+SVG_ICON = """
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+   <rect x="10" y="75" width="75" height="15"
+                  stroke="#666"
+                  stroke-width="2"
+                  fill="#f5f5f5"/>
+
+   <!-- Left-side books -->
+   <rect x="15" y="30" width="10" height="45"
+         stroke="#666"
+         stroke-width="2"
+         fill="#e6e6fa"/>
+   <rect x="30" y="35" width="10" height="40"
+         stroke="#666"
+         stroke-width="2"
+         fill="#e6ffe6"/>
+
+   <!-- Boy character -->
+   <circle cx="58" cy="55" r="8"
+           stroke="#333"
+           stroke-width="2"
+           fill="#ffcccb"/>
+
+   <!-- Body and arm reaching toward books -->
+   <line x1="58" y1="63" x2="58" y2="75"
+         stroke="#333"
+         stroke-width="2"/>
+   <path d="M58,68 Q48,65 43,70"
+         stroke="#333"
+         stroke-width="2"
+         fill="none"/>
+
+</svg>
+"""
+
 
 class OllamaChatApp:
     def __init__(self):
@@ -642,11 +677,15 @@ Answer: """
                     st.rerun()
 
     def run(self):
-        """Main application loop"""
-
         models = self.get_ollama_models()
         with st.sidebar:
-            st.title("Inquisitive 📚")
+            container = st.container()
+            with container:
+                col1, col2 = st.columns([10, 10])
+                with col1:
+                    st.title("Inquisitive")
+                with col2:
+                    st.image(SVG_ICON, width=60)
             if models:
                 if st.session_state.ollama_model_selected is None:
                     st.session_state.ollama_model_selected = models[0]

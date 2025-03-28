@@ -1,13 +1,13 @@
 import streamlit as st
 from utils import init_session_state, load_token_from_storage
 from auth_page import show_login_page, show_register_page, logout_user
-from streamlit_ui import OllamaChatApp
+from streamlit_ui import OllamaChatApp, SVG_ICON
 
 st.set_page_config(
-    page_title="Document Q&A",
-    page_icon="📚",
-    layout="wide"
-)
+    page_title="Inquisitive",
+    page_icon=SVG_ICON,
+    layout="wide")
+
 # Initialize session state
 init_session_state()
 
