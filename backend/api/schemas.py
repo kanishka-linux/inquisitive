@@ -27,6 +27,7 @@ class FileUploadResponse(schemas.BaseModel):
     file_url: str
     status: str
     created_at: datetime
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -159,4 +160,9 @@ class NoteList(schemas.BaseModel):
 
 class LinksList(schemas.BaseModel):
     links: List[LinkResponse]
+    total: int
+
+
+class FilesList(schemas.BaseModel):
+    files: List[FileUploadResponse]
     total: int

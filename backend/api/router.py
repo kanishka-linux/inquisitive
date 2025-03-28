@@ -54,7 +54,8 @@ from backend.api.schemas import (
     NoteResponse,
     NoteUpdateRequest,
     NoteUpdateResponse,
-    LinksList
+    LinksList,
+    FilesList
 )
 from backend.api.service import validate_jwt_token
 from backend.database import get_async_session
@@ -196,6 +197,50 @@ async def upload_file(
         "status": ProcessingStatus.PENDING,
         "created_at": created_at
     }
+
+
+# Files List endpoint
+@file_router.get("/", response_model=FilesList, status_code=200)
+async def list_uploaded_files(
+    skip: int = 0,
+    limit: int = 100,
+    user: User = Depends(current_active_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    stmt = (
+        select(FileUpload)
+        .where(FileUpload.user_id == user.id)
+        .order_by(desc(FileUpload.updated_at))
+        .offset(skip)
+        .limit(limit)
+    )
+
+    result = await session.execute(stmt)
+    records = result.scalars().all()
+
+    count_stmt = (
+        select(func.count())
+        .select_from(FileUpload)
+        .where(FileUpload.user_id == user.id)
+    )
+
+    total_count = await session.execute(count_stmt)
+    total_count = total_count.scalar() or 0
+
+    result = [
+        FileUploadResponse(
+            file_url=record.file_url,
+            filename=record.filename,
+            status=record.status,
+            created_at=record.created_at,
+            updated_at=record.updated_at
+        ) for record in records
+    ]
+    # Return the file URL to the client
+    return FilesList(
+        files=result,
+        total=total_count
+    )
 
 
 # Note upload endpoint
