@@ -681,7 +681,7 @@ Answer: """
         with st.sidebar:
             container = st.container()
             with container:
-                col1, col2 = st.columns([10, 10])
+                col1, col2 = st.columns([1, 1])
                 with col1:
                     st.title("Inquisitive")
                 with col2:
@@ -867,21 +867,22 @@ Answer: """
 
         with st.sidebar:
             st.sidebar.divider()
-        if st.sidebar.button("Clear Chat"):
-            st.session_state.messages = []
-            self.main_content.empty()
-            self.right_sidebar.empty()
-            st.session_state.source_type = None
-            st.empty()
-            st.session_state.prompt_with_docs.clear()
-            st.rerun()
+            bottom_container = st.container()
+            with bottom_container:
+                col3, col4 = st.columns([1, 1])
+                if col3.button("Clear Chat", use_container_width=True):
+                    st.session_state.messages = []
+                    self.main_content.empty()
+                    self.right_sidebar.empty()
+                    st.session_state.source_type = None
+                    st.empty()
+                    st.session_state.prompt_with_docs.clear()
+                    st.rerun()
+                if col4.button("Tips", use_container_width=True):
+                    st.markdown(
+                        "Shortcuts\n\n`/notes`\n\n`/files`\n\n`/links`\n\n`/notes-list`\n\nStart prompt with above shortcuts for focussed search")
 
-        with st.sidebar:
-            if st.sidebar.button("Tips"):
-                st.markdown(
-                    "Shortcuts\n\n`/notes`\n\n`/files`\n\n`/links`\n\n`/notes-list`\n\nStart prompt with above shortcuts for focussed search")
-
-        if st.sidebar.button(f"Logout ({st.session_state.username}) ⬅️"):
+        if st.sidebar.button(f"Logout ({st.session_state.username}) ⬅️", use_container_width=True):
             navigate_to("logout")
 
         if st.session_state.authenticated:
