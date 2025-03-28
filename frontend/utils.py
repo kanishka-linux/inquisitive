@@ -285,6 +285,28 @@ def fetch_notes(skip=0, limit=100):
     return result
 
 
+def fetch_links(skip=0, limit=100):
+    headers = {
+        "Authorization": f"Bearer {st.session_state.token}",
+        "Content-Type": "application/json"
+    }
+
+    params = {"skip": skip, "limit": limit}
+    response = requests.get(
+        f"{settings.API_URL}/links",
+        headers=headers,
+        params=params
+    )
+
+    result = {"links": [], "total": 0}
+    if response.status_code == 200:
+        result = response.json()
+    else:
+        result
+
+    return result
+
+
 def fetch_file(file_url):
     headers = {
         "Authorization": f"Bearer {st.session_state.token}"

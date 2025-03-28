@@ -22,7 +22,7 @@ from utils import (
     fetch_notes,
     fetch_file,
     update_note_to_api_server,
-    create_markdown_editor
+    fetch_links
 )
 
 from config import settings
@@ -640,6 +640,81 @@ Answer: """
                 args=(url,)
             )
 
+    def display_links(self):
+
+        page_size = settings.LIST_PAGE_SIZE
+
+        # Initialize session state for page number if not exists
+        current_page = st.session_state.list_page_number
+
+        # Calculate offset for API call
+        offset = (current_page - 1) * page_size
+
+        # Fetch only the notes for the current page
+        response = fetch_links(offset, page_size)
+        records = response["links"]
+        total_links = response["total"]
+
+        total_pages = math.ceil(total_links / page_size)
+
+        # Edge case where links are still not created
+        # but we are trying to list notes
+        if total_pages == 0:
+            total_pages = 1
+
+        col1, col2 = self.main_content.columns([5, 2])
+
+        with col1:
+            # Show current range of notes being displayed
+            start_idx = offset + 1
+            end_idx = min(offset + page_size, total_links)
+            st.write(f"Showing notes {start_idx}-{end_idx} of {total_links}")
+
+        with col2:
+            # Simple page input
+            page_input = st.number_input(
+                "Go to page",
+                min_value=1,
+                max_value=total_pages,
+                value=current_page,
+                step=1,
+                key="page_input"
+            )
+
+        # Update page number when input changes
+        if page_input != current_page:
+            st.session_state.list_page_number = page_input
+            st.session_state.list_page_number_modified = True
+            st.rerun()
+
+        header_cols = self.main_content.columns([1, 5, 5, 10])
+        header_cols[0].write("**ID**")
+        header_cols[1].write("**Title**")
+        header_cols[2].write("**Updated At**")
+        header_cols[3].write("**URL**")
+
+        # Add a separator
+        self.main_content.markdown("---")
+
+        # Display each note
+        for i, link in enumerate(records):
+            cols = self.main_content.columns([1, 5, 5, 10])
+
+            # Display ID
+            cols[0].write(f"{i+offset+1}")
+
+            # Display Title
+            title = link["title"]
+            cols[1].write(title)
+
+            url = link["url"]
+            # View button
+
+            updated_at = self.format_timestamp(link["updated_at"])
+            cols[2].write(updated_at)
+
+            cols[3].write(url)
+
     def edit_note_btn_clicked(self, file_url):
         st.session_state.view_mode = "edit-note"
         st.session_state.edit_note_url = file_url
@@ -833,6 +908,8 @@ Answer: """
 
             if prompt.startswith("/notes-list"):
                 st.session_state.view_mode = "notes-list"
+            elif prompt.startswith("/links-list"):
+                st.session_state.view_mode = "links-list"
             else:
                 st.session_state.view_mode = "ollama-chat"
                 prompt = self.set_source_type(prompt)
@@ -851,11 +928,14 @@ Answer: """
         if st.session_state.prompt_with_docs and not st.session_state.right_sidebar_rendered:
             self.display_references(1)
 
-        if (st.session_state.view_mode == "notes-list"
+        if (st.session_state.view_mode in ["notes-list", "links-list"]
             or st.session_state.list_page_number_modified
             ):
             st.session_state.list_page_number_modified = False
-            self.display_notes()
+            if st.session_state.view_mode == "notes-list":
+                self.display_notes()
+            else:
+                self.display_links()
 
         if st.session_state.view_mode == "edit-note":
             self.edit_notes(st.session_state.edit_note_url)
@@ -880,7 +960,7 @@ Answer: """
                     st.rerun()
                 if col4.button("Tips", use_container_width=True):
                     st.markdown(
-                        "Shortcuts\n\n`/notes`\n\n`/files`\n\n`/links`\n\n`/notes-list`\n\nStart prompt with above shortcuts for focussed search")
+                        "Shortcuts\n\n`/notes`\n\n`/files`\n\n`/links`\n\n`/notes-list`\n\n`/links-list`\n\nStart prompt with above shortcuts for focussed search")
 
         if st.sidebar.button(f"Logout ({st.session_state.username}) ⬅️", use_container_width=True):
             navigate_to("logout")
