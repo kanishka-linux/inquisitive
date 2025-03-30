@@ -2,6 +2,7 @@
 from pydantic_settings import BaseSettings
 from pathlib import Path
 from typing import Dict
+from backend.vector_store.models import StoreEngine
 
 
 class Settings(BaseSettings):
@@ -24,8 +25,14 @@ class Settings(BaseSettings):
     UPLOAD_DIR: Path = Path("./uploads")
     UPLOAD_DIR.mkdir(exist_ok=True)
     EMBEDDINGS_MODEL: str = "chroma/all-minilm-l6-v2-f32"
+    EMBEDDINGS_DIMENSION: int = 384
 
-    VECTOR_STORE_PERSISTS_DIRECTORY: str = "./chroma_db"
+    CHROMA_VECTOR_STORE_PERSISTS_DIRECTORY: str = "./chroma_db"
+    MILVUS_VECTOR_STORE_URL: str = "./milvus_data.db"
+    LANCE_DB_VECTOR_STORE_PERSISTS_DIRECTOY: str = "./lance_db"
+    VECTOR_STORE_COLLECTION_NAME: str = "document_store"
+    DEFAULT_VECTOR_DB: str = StoreEngine.LANCE
+
     WINDOW_SIZE_MULTIPLIER: int = 10
     DEFAULT_HEADERS: Dict[str, str] = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
