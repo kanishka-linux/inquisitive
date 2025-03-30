@@ -3,12 +3,14 @@ import aiohttp
 from bs4 import BeautifulSoup
 
 from backend.api.models import Link, ProcessingStatus
-from backend.vector_store import add_link_content_to_vector_store
+from backend.vector_store.adapter import vector_db
 from backend.core.logging import get_logger
 from urllib.parse import urlparse
 from backend.database import async_session_maker
 from sqlalchemy import select
 
+
+vector_store = vector_db()
 
 # import logging
 logger = get_logger()
@@ -112,7 +114,7 @@ async def process_single_url(link_id, url, user_email, headers):
                                 link.favicon = favicon
 
                                 # Add to vector store
-                                await asyncio.to_thread(add_link_content_to_vector_store,
+                                await asyncio.to_thread(vector_store.add_link_content_to_vector_store,
                                                         text_content, url, title, link_id, user_email)
 
                                 # Update status to finished

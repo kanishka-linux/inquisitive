@@ -1,15 +1,16 @@
 import asyncio
 
 from backend.api.models import FileUpload, ProcessingStatus, Note
-from backend.vector_store import add_uploaded_document_content_to_vector_store
+from backend.vector_store.adapter import vector_db
 from backend.core.logging import get_logger
 from backend.database import async_session_maker
 from sqlalchemy import select, func
-from datetime import datetime
 
+vector_store = vector_db()
 
 # import logging
 logger = get_logger()
+
 
 # Create a queue for background processing
 file_processor_queue = asyncio.Queue()
@@ -47,7 +48,7 @@ async def process_file(
         async with async_session_maker() as db:
             try:
                 await asyncio.to_thread(
-                    add_uploaded_document_content_to_vector_store,
+                    vector_store.add_uploaded_document_content_to_vector_store,
                     file_path,
                     file_name,
                     file_url,

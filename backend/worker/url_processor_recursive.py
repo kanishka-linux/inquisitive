@@ -3,12 +3,14 @@ from bs4 import BeautifulSoup
 import re
 
 from backend.api.models import Link, ProcessingStatus
-from backend.vector_store import add_link_content_to_vector_store
+from backend.vector_store.adapter import vector_db
 from backend.core.logging import get_logger
 from urllib.parse import urlparse
 from backend.database import async_session_maker
 from langchain_community.document_loaders import RecursiveUrlLoader
 
+
+vector_store = vector_db()
 
 # import logging
 logger = get_logger()
@@ -74,7 +76,10 @@ async def crawl_url(url, user, headers):
                     db.add(db_link)
                     await db.commit()
                     await db.refresh(db_link)
-                    await asyncio.to_thread(add_link_content_to_vector_store, text, source, title, db_link.id, user.email)
+                    await asyncio.to_thread(
+                        vector_store.add_link_content_to_vector_store,
+                        text, source, title, db_link.id, user.email
+                    )
                     db_link.status = ProcessingStatus.FINISHED
                     await db.commit()
 

@@ -22,8 +22,7 @@ from backend.core.utils import save_file, update_file_with_backup
 from backend.worker.url_processor import url_processing_queue
 from backend.worker.url_processor_recursive import recursive_url_processing_queue
 from backend.worker.process_uploaded_file import file_processor_queue
-from backend.vector_store import fetch_documents, remove_documents
-from datetime import datetime
+from backend.vector_store.adapter import vector_db
 
 from backend.api.models import (
     User,
@@ -67,6 +66,8 @@ import uuid
 import shutil
 from pathlib import Path
 
+
+vector_store = vector_db()
 
 logger = get_logger()
 
@@ -405,27 +406,21 @@ async def update_note(
 
     # remove existing vector documents
     # and then add new set of updated documents
-    vector_documents_removed = remove_documents(
+    vector_store.remove_documents(
         note_record.filename,
         user.email
     )
-    if vector_documents_removed:
-        await file_processor_queue.put(
-            (
-                note_record.file_path,
-                note_record.filename,
-                note_record.url,
-                note_record.id,
-                user.email,
-                "note"
-            )
-        )
 
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="File not found on server"
+    await file_processor_queue.put(
+        (
+            note_record.file_path,
+            note_record.filename,
+            note_record.url,
+            note_record.id,
+            user.email,
+            "note"
         )
+    )
 
     return NoteUpdateResponse(
         filename=note_record.filename,
@@ -600,7 +595,7 @@ async def search_documents(
 
         window_size = request.window_size
         source_type = request.source_type
-        docs = fetch_documents(
+        docs = vector_store.fetch_documents(
             request.include_sources,
             request.exclude_sources,
             request.window_size,
