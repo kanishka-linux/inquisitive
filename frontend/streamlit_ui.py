@@ -10,6 +10,7 @@ import base64
 import aiohttp
 import math
 from datetime import datetime
+import time
 from utils import (
     save_token_to_storage,
     navigate_to,
@@ -120,6 +121,8 @@ class OllamaChatApp:
             st.session_state.right_sidebar_rendered = False
         if 'discussion_mode' not in st.session_state:
             st.session_state.discussion_mode = "context-aware"
+        if 'updated_note_content' not in st.session_state:
+            st.session_state.updated_note_content = None
 
     def setup_streamlit_page_layout(self):
         self.qna_tab = st
@@ -844,10 +847,13 @@ Answer: """
                     updated = update_note_to_api_server(
                         updated_content, file_url)
                     if updated:
+                        st.session_state.updated_note_content = updated_content
                         st.success("file updated successfully")
                     else:
+                        st.session_state.updated_note_content = None
                         st.error("error occurred when updating file")
 
+                    time.sleep(1)
                     st.rerun()
 
     def run(self):
@@ -1029,6 +1035,10 @@ Answer: """
         if st.session_state.prompt_with_docs and not st.session_state.right_sidebar_rendered:
             self.display_references(1)
 
+        if st.session_state.updated_note_content is not None:
+            st.markdown(st.session_state.updated_note_content)
+            st.session_state.updated_note_content = None
+
         if (st.session_state.view_mode in ["notes-list", "links-list", "files-list"]
             or st.session_state.list_page_number_modified
             ):
@@ -1060,6 +1070,7 @@ Answer: """
                     st.session_state.source_type = None
                     st.empty()
                     st.session_state.prompt_with_docs.clear()
+                    st.session_state.updated_note_content = None
                     st.rerun()
                 if col4.button("Tips", use_container_width=True):
                     st.markdown(TIPS)
