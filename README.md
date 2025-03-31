@@ -15,7 +15,7 @@
 * Focussed mode prompt shortcuts: `/links, /notes, /files` - to narrow down search based on source type.
 * streamlit based UI for chat interface
 * JWT based auth for basic user management based on fastapi and sqlite
-* Langchain chroma db for vector database
+* Multiple vector database backend support - default is lancedb.
 * Ability to choose between multiple locally installed ollama models from the UI itself
 * Listing of reference while discussing with ollama models
 * View reference sources inline in case of notes and uploaded file.
@@ -57,9 +57,15 @@ $ source venv/bin/activate
 $ git clone https://github.com/kanishka-linux/inquisitive.git
 $ cd inquisitive
 $ pip install -r requirements.txt
+$ ./start.sh
+```
+
+*In case above startup script is not working, one can start backend and FE server separately as below:
+
+```
 $ uvicorn backend.main:app --reload --port 8000
 
-Open Another terminal in the same git directory
+Open Another terminal in the same project directory
 
 $ source ../venv/bin/activate
 $ export STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
@@ -74,38 +80,49 @@ It served me well over the years, but since last couple of months I was mulling 
 
 ## Technical choices
 
-Actually I wanted something simpler which could be built over a weekend, but after one feature after another, things became a bit complex architecture wise for a self-hosted appllication.
+Actually I wanted something simpler which could be built over a weekend, but after one feature after another, things became a bit complex as well as a bit interesting also architecture wise for a self-hosted appllication. For those, who are interested in tech choices, can go thorough the following details just for curiosity.
 
-After searching the web, I found  streamlit will work well for the use-case for building chat interaface and some basic UI, but for anything apart from that, I had to look for somewhere else. As streamlit is meant to be a stateless application and it has somewhat different design principles, it was getting harder to manage state with it for multiple users. So I had to build a dedicated backend for managing auth flow and other state information. It required good amount of refactring and finally I was able to separate out both FE and BE completely, which proved to be useful when adding more features and made things easier to reason about.
+After searching the web, I found streamlit will work well for the use-case for building chat interaface and some basic UI, but for anything apart from that, I had to look for somewhere else. As streamlit is meant to be a stateless application and it has somewhat different design principles, it was getting harder to manage state with it for multiple users. So I had to build a dedicated backend for managing auth flow and other state information. It required good amount of refactring and finally I was able to separate out both FE and BE completely, which proved to be useful when adding more features and made things easier to reason about.
 
 Currently - Inquisitive has following broad components
 
 * **Authentication:**
     * User logs in through Streamlit UI Login page
-    * Backend generates JWT token
-    * Token is saved locally for future authenticated requests
+    * for user management, fastapi-users is used
+    * Backend generates JWT token. Peoplecan easily change algorithm, keys and token expiry time from the `backend/config.py`
+    * At FE side, the token is saved locally in localstorage instead of cookies for future requests
 
 * **File Processing:**
     * Files/notes are uploaded and added to the queue for processing and immediately acknowledged after adding some metadata in sqlite db.
     * Background worker processes content of the job queue asynchronously
-        * Ideally one should have used existing job queue/ worker solutions like celery backed redis, but it would have made things even more complex for self-hosting purpose, so decided to write minimal job queue using `asyncio.queue` - that processes tasks in the background backed by sqlite db. Currently there is no retry mechanism, but will provide some way to retry and list failed jobs later on if needed. 
+        * Ideally one should have used existing job queue/ worker solutions like celery backed redis, but it would have made things even more complex for self-hosting purpose, so decided to write minimal job queue using `asyncio.queue` - that processes tasks in the background backed by sqlite db. It is not fast, but it is good enough for the current use-case. Currently there is no retry mechanism, but will provide some way to retry and list failed jobs later on if needed. Please make sure, not to shutdown the backend, before jobs are completed.
     * Vector database stores processed documents for efficient searching
     * After that the record in sqlite db is marked with finished status
 
+* **Choice of vector database**
+    * Initially after some search, I decided to use chroma db as it was easy to setup locally. But after storing thousands of web-links (from my bookmark) and their content in it, I felt a bit sluggishness in the response. Inquisitive allows multiple filters based on metadata and source type, which allows to include/exclude references from the search. Therefore, it was necessary to add index on the metadata fields in case of large document collection - which chroma db didn't allow. Therefore, I had to look for some other options, and finally settled for lancedb as a default vector database, since it has good support for indexing metadata fields, along with very easy installation process without any client server architecture. Support for chroma db is still there and people can easily switch between the two by making some changes in `backend/config.py`. There is also support for `milvus-lite` - which I wasn't able to test properly, but kept support for it also. People can check which vector database works for them best and switch to it.
+
 * **Search and Response:**
-    * All search requests include the JWT token for authentication
     * A correct query is formed after applying filter and user info. The query flows through the vector database
     * After results are obtained, another layer of filtering is applied in case of links or urls, to pick up the unique urls.
-    * Streamlit directly interacts with OLLAMA for final processing, once relevant results are obtained from vector db.
+    * For web-links, in order to get x set of results, inquisitive will fetch 10x relevant documents and after that unique urls will be picked up. 
+    * In case of notes and files, unique links are not fetched, and one can get multiple references from the same document. Users can easily include/exclude selected document - which will be or won't be considered for next set of search based on filtering  criteria.
+    * After that, Streamlit directly interacts with OLLAMA for final processing, once relevant results are obtained from vector db.
 
 *  **Note Taking:**
-    * Notes can be added via the UI.
-    * Notes metadata is stored in the sqlite and the actual file in markdown format will be stored in the dedicated `upload directory`, after that content will be stored in vector db.
+    * Notes can be added via the UI in the mardkown format.
+    * Some basic, Notes metadata is stored in the sqlite and the actual file in markdown format will be stored in the dedicated `upload directory`, after that content will be stored in vector db.
     * Notes can be edited and can be listed down using `/notes-list` prompt
+    * After notes are edited and saved again, the content in the vector database will be refreshed accordingly
+    * One can directly search within notes  with `/notes` prompt 
 
 * **Reference section:**
-    * For every prompt, references are listed down
+    * For every search prompt, references are listed down
     * Reference window size can be adjusted via the UI and those many references will be picked up for discussion/QnA session.
+    * There is a way to get only references, without any discussion mode.
+    * References will have both include/exclude buttons and view documents button - wherever possible.
+    * Locally stored documents and notes can be viewed inline, without opening them separately.
+    * Ability to view local sources as it is has been added, so that one can easily cross verify the information within the application itself.
 
 
 ## Sequence diagram for general flow
@@ -114,8 +131,22 @@ Currently - Inquisitive has following broad components
 
 ## So After building, is it really serving the purpose it is supposed to serve?
 
-* I fed thousands of links to it (from my bookmark) which I've accumulated over the years. I was quite a bit surprised to find that, after using inquisitive with focussed search mode for  links i.e. `/links`, I was able to get some really good recommendations from my personal collection which I might have forgotten over a period of time. And I didn't even feel like adding tags or anything extra to extract relevant results. It seems like one can even build personal search engine, in case one has lots of links in the bookmark.
+* I fed thousands of links to Inquisitive (from my bookmark) which I've accumulated over the years. One can just export your browser bookmark in json or any format or just dump list of links in plain text format and give it to inquisitive. It will do regex and find all relevant http links from the documents. I was quite a bit surprised to find that, after using inquisitive with focussed search mode for links i.e. `/links`, I was able to get some really good recommendations from my personal collection which I might have forgotten over a period of time. And I didn't even feel like adding tags or anything extra to extract relevant results. It seems like one can even build personal search engine, in case one has lots of links in the bookmark.
 
 * Adding notes - After feeding my notes to Inquisitive, retrieving relevant information was quick enough  (`/notes`). It is still early to comment about this feature. But having the ability to see notes in markdown and edit it and refresh the updated data in vector db on edit, seeing all the reference notes in the sidebar - made things lot more convenient when it came to searching and organizing notes. My only gripe is, not so good editor for markdwon. Currently I'm using Streamlit's in-built text-area component for adding notes, which could have been better.
 
 * Discussion/QnA session with LLM  - Quality of this depends a lot upon the model. Models with 7B+ parameter give really good result provided the machine has dedicated gpu. For machines with only cpu, models with 1-2B+ parameters can give response a bit quickly, but they are mostly irrelevant and not upto the mark and too much hallucination. So machines with only CPU, can use Inquisitive mainly for searching purpose but not for relevant discussion/QnA purpose. People can try out multiple models and see what works for them best.
+
+## Some Fun Facts
+
+* This is my first major personal project, where I've used LLM models extensively while coding. I was really surprised, how much LLM can help us get it done within a short period of time. In professional setting, I've mainly worked on golang and elixir based tech stack and mostly worked on the backend side of things to make things stable and scalable. I haven't used python so far in professional setting. I use python based stack for my personal projects and I haven't started any greenfield python project for a long time. I wasn't aware of latest trends in python web frameworks. But despite  of all these, when I felt like building new project again, LLMs proved to be very helpful to get started and helped in generating good amount of boilerplate code easily. At first, I was simply amazed and understood why there is a craze for AI assisted coding.
+
+* When I wanted to add some basic auth to streamlit app, LLM helped in generating some basic code within an hour. I thought, my work has become simpler and started day-dreaming how much time I can save with LLMs if used for coding. But then in the next hour, I came back to ground reality again. The generated code and the approach suggested by the LLM had so many subtle bugs - which were difficult to pin-point in the beginning. In order to debug the code - which was generated within an hour, I had to spend next `two days` just to debug things. Finally, I had to reach out to official documentation and various forums, to understand the issues in details which gave me better understanding. I prompted to LLM - `You have given me wrong answer and what you suggest is not possible for the framework`, then LLM's reply was - `You are absolutely right, you've pinpointed the root cause of the problem, now let's start digging into it in details`. And then I thought to myself - `If that is the case, why did I spend two days in the wrong direction`. I chuckled and laughed at both myself and LLM. Even in the age of AI, there seems to be no substitue for traditional way of learning by going through books, official documentation and various forum/blogs posts - to build better understanding. It was nice learning experience about what AI can do and what it can't.
+
+* LLMs can surely boost productivity as a coding assistance, there is no denying about that. But over-reliance on them can surely backfire, if one can't understand, test and review the code written by AI. I'm hearing about AI assited code review every now and then, but there is still need for human assisted code review of code written by AI. In this day and the age, it looks like both are complimentary to each other. However, I think, there is no substitute for checking references whenever possible when discussing with AI.
+
+## Some known limitations of Inquisitive
+
+* If you want to start discussion on different topic, you'll need to clear existing chat messages
+
+* To process thousands of links, Iquisitive will take quite a bit amount of time. During that period please don't shut-down the backend, since pending jobs won't get picked up when the backend service starts again. It is on TODO list, to allow commands to pick up pending jobs after restart.
