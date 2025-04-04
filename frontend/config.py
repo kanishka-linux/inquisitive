@@ -1,6 +1,25 @@
 # frontend/config.py
 from pydantic_settings import BaseSettings
 from typing import Dict
+import os
+import json
+from pathlib import Path
+
+
+def get_env_file_path():
+    """Get the path to the .env file in the base directory"""
+    home_dir = os.path.expanduser("~")
+    base_dir = os.path.join(home_dir, ".config", "inquisitive")
+
+    Path(base_dir).mkdir(parents=True, exist_ok=True)
+
+    env_file_path = os.path.join(base_dir, "frontend.env")
+
+    if not os.path.exists(env_file_path):
+        with open(env_file_path, 'w') as f:
+            f.write("# Frontend Environment variables for Inquisitive\n")
+
+    return env_file_path
 
 
 class Settings(BaseSettings):
@@ -15,7 +34,22 @@ class Settings(BaseSettings):
     }
 
     class Config:
-        env_file = ".env"
+        env_file = get_env_file_path()
+        env_file_encoding = 'utf-8'
+
+        @classmethod
+        def parse_env_var(cls, field_name, raw_val):
+            if field_name == "DEFAULT_HEADERS":
+                try:
+                    return json.loads(raw_val)
+                except json.JSONDecodeError:
+                    return {}
+            elif field_name == "UPLOAD_FILE_TYPES":
+                try:
+                    return json.loads(raw_val)
+                except json.JSONDecodeError:
+                    return [item.strip() for item in raw_val.split(',')]
+            return raw_val
 
 
 settings = Settings()

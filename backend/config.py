@@ -4,8 +4,31 @@ from pathlib import Path
 from typing import Dict
 from backend.vector_store.models import StoreEngine
 import os
+import json
 
 
+def get_env_file_path():
+    """Get the path to the .env file in the base directory"""
+    home_dir = os.path.expanduser("~")
+    base_dir = os.path.join(home_dir, ".config", "inquisitive")
+
+    Path(base_dir).mkdir(parents=True, exist_ok=True)
+
+    env_file_path = os.path.join(base_dir, "backend.env")
+
+    if not os.path.exists(env_file_path):
+        with open(env_file_path, 'w') as f:
+            f.write("# Backend environment variables for Inquisitive\n")
+
+    return env_file_path
+
+
+# It is possible to override all the defaults values
+# by specifying env variables or adding variables in backend.env.
+# However, if we decide to override default directory locations
+# then we need to make sure that one needs to create
+# all the relevant directories and sub-directories
+# manually
 class Settings(BaseSettings):
     # BASIC DIRECTORY CREATION
     HOME_DIR: str = os.path.expanduser("~")
@@ -63,7 +86,22 @@ class Settings(BaseSettings):
     }
 
     class Config:
-        env_file = ".env"
+        env_file = get_env_file_path()
+        env_file_encoding = 'utf-8'
+
+        @classmethod
+        def parse_env_var(cls, field_name, raw_val):
+            if field_name == "DEFAULT_HEADERS":
+                try:
+                    return json.loads(raw_val)
+                except json.JSONDecodeError:
+                    return {}
+            elif field_name == "CORS_ORIGINS":
+                try:
+                    return json.loads(raw_val)
+                except json.JSONDecodeError:
+                    return [item.strip() for item in raw_val.split(',')]
+            return raw_val
 
 
 settings = Settings()
