@@ -1,7 +1,7 @@
 import streamlit as st
-from utils import init_session_state, load_token_from_storage
-from auth_page import show_login_page, show_register_page, logout_user
-from streamlit_ui import OllamaChatApp, SVG_ICON
+from frontend.utils import init_session_state, load_token_from_storage
+from frontend.auth_page import show_login_page, show_register_page, logout_user
+from frontend.streamlit_ui import OllamaChatApp, SVG_ICON
 
 st.set_page_config(
     page_title="Inquisitive",

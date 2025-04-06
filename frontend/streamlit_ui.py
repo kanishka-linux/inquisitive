@@ -10,8 +10,7 @@ import base64
 import aiohttp
 import math
 from datetime import datetime
-import time
-from utils import (
+from frontend.utils import (
     save_token_to_storage,
     navigate_to,
     upload_file_to_api_server,
@@ -27,7 +26,7 @@ from utils import (
     fetch_links
 )
 
-from config import settings
+from frontend.config import settings
 
 SVG_ICON = """
 <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">

@@ -3,7 +3,7 @@ import json
 import requests
 import streamlit as st
 from streamlit_js_eval import streamlit_js_eval
-from config import settings
+from frontend.config import settings
 from string import Template
 import time
 

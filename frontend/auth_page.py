@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
-from utils import navigate_to, save_token_to_storage, clear_token_from_storage
-from config import settings
+from frontend.utils import navigate_to, save_token_to_storage, clear_token_from_storage
+from frontend.config import settings
 
 
 def login_user(email, password):
