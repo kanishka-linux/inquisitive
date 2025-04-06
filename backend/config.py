@@ -30,6 +30,11 @@ def get_env_file_path():
 # all the relevant directories and sub-directories
 # manually
 class Settings(BaseSettings):
+    # BASIC SERVER SETTINGS
+    SERVER_HOST: str = "0.0.0.0"
+    SERVER_PORT: int = 8000
+    SERVER_LOG_LEVEL: str = "debug"
+
     # BASIC DIRECTORY CREATION
     HOME_DIR: str = os.path.expanduser("~")
     CONFIG_DIR: str = os.path.join(HOME_DIR, ".config")
@@ -76,7 +81,7 @@ class Settings(BaseSettings):
     JWT_TOKEN_AUDIENCE: str = "fastapi-users:auth"
 
     # CORS settings
-    # Streamlit default port
+    # Streamlit UI default port
     CORS_ORIGINS: list[str] = ["http://localhost:8501"]
     WINDOW_SIZE_MULTIPLIER: int = 10
     DEFAULT_HEADERS: Dict[str, str] = {

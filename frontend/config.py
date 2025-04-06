@@ -15,6 +15,7 @@ def get_env_file_path():
 
     env_file_path = os.path.join(base_dir, "frontend.env")
 
+    # Create an empty .env file if it doesn't exist
     if not os.path.exists(env_file_path):
         with open(env_file_path, 'w') as f:
             f.write("# Frontend Environment variables for Inquisitive\n")
@@ -23,6 +24,10 @@ def get_env_file_path():
 
 
 class Settings(BaseSettings):
+    SERVER_PORT: int = 8501
+    SERVER_HOST: str = "0.0.0.0"
+
+    # FastAPI Backend URL (http://{HOST}:{PORT})
     API_URL: str = "http://localhost:8000"
     LIST_PAGE_SIZE: int = 5
     ALLOW_AUTO_USER_REGISTER: bool = True
