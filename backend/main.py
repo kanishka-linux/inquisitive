@@ -11,6 +11,7 @@ from backend.config import settings
 from backend.database import create_db_and_tables
 from backend.core.logging import setup_logging
 import asyncio
+import uvicorn
 
 logger = setup_logging()
 
@@ -46,3 +47,16 @@ def on_startup():
 @app.get("/")
 async def root():
     return {"message": "Welcome to FastAPI API Backend"}
+
+
+def start_server():
+    uvicorn.run(
+        "backend.main:app",
+        host=settings.SERVER_HOST,
+        port=settings.SERVER_PORT,
+        log_level=settings.SERVER_LOG_LEVEL
+    )
+
+
+if __name__ == "__main__":
+    start_server()
