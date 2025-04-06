@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "Inquisitive"
+version = "0.1.0"
+description = "A personal self-hosted knowledge-base with a touch of LLM/RAG"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "GNU General Public License v3 (GPLv3)"}
+authors = [
+    {name = "Abhishek K", email = "kanishka.linux@gmail.com"}
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: OS Independent",
+]
+# Use dynamic dependencies from requirements.txt
+dynamic = ["dependencies"]
+
+[project.scripts]
+inquisitive-start-backend = "backend.main:start_server"
+inquisitive-start-ui = "start.launcher:start_frontend_separately"
+inquisitive-start = "start.launcher:main"
+
+[tool.setuptools.dynamic]
+# This tells setuptools to read dependencies from requirements.txt
+dependencies = {file = ["requirements.txt"]}
+
+[tool.setuptools]
+packages = [
+    "backend",
+    "backend.api",
+    "backend.core",
+    "backend.vector_store",
+    "backend.worker",
+    "frontend",
+    "start"
+]
