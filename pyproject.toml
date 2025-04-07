@@ -8,13 +8,13 @@ version = "0.1.0"
 description = "A personal self-hosted knowledge-base with a touch of LLM/RAG"
 readme = "README.md"
 requires-python = ">=3.11"
-license = {text = "GNU General Public License v3 (GPLv3)"}
+license = {text = "GNU Affero General Public License v3 (AGPLv3)"}
 authors = [
     {name = "Abhishek K", email = "kanishka.linux@gmail.com"}
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "License :: OSI Approved :: GNU Affero General Public License v3",
     "Operating System :: OS Independent",
 ]
 # Use dynamic dependencies from requirements.txt
