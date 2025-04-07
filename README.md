@@ -26,7 +26,7 @@
 
 ### Requirements
 
-* Python 3.12+
+* Python 3.11+
 * streamlit (for UI)
 * fastapi   (for BE API server)
 * ollama    (locally running ollama instance)
@@ -49,52 +49,75 @@ $ ollama pull deepseek-r1:1.5b
 $ ollama serve
 ```
 
-*Install and run backend auth server and frontend chat interface*
+*Install and run backend server and frontend chat interface*
 
 ```
-$ python3.12 -m venv venv
+$ python3.11 -m venv venv
 $ source venv/bin/activate
-$ git clone https://github.com/kanishka-linux/inquisitive.git
-$ cd inquisitive
-$ pip install -r requirements.txt
-$ ./start.sh
+$ (venv) git clone https://github.com/kanishka-linux/inquisitive.git
+$ (venv) cd inquisitive
+$ (venv) pip install -e .
+$ (venv) inquisitive-start (It will start both BE and FE. Starting BE may take some time on the first run)
 ```
 
-*In case above startup script is not working, one can start backend and FE server separately as below:
+*In case one wants to run backend and FE separately on separate terminals*
 
 ```
-$ uvicorn backend.main:app --reload --port 8000
+Make sure you are in the same project directory and venv is activated on both the terminals 
 
-Open Another terminal in the same project directory
-
-$ source ../venv/bin/activate
-$ export STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
-$ streamlit run frontend/app.py
+$ (venv) inquisitive-start-backend (Terminal 1)
+$ (venv) inquisitive-start-ui (Terminal 2)
 ```
+
+*Directly running backend and frontend servers*
+
+```
+Make sure you are in the project directory and venv is activated
+
+$ (venv) pip install -r requirements.txt
+$ (venv) uvicorn backend.main:app --reload --port 8000
+
+Open Another terminal in the same project directory and activate venv
+
+$ (venv) export STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+$ (venv) streamlit run frontend/app.py
+```
+
+## Config Directory
+
+* When BE and FE server is started for the first time, a config directory is created in the home directory `~/.config/inquisitive`.
+
+* The config directory will have two files `backend.env` and `frontend.env`. People can override default settings by providing new values in the respectivee env files.
+    * For default settings values, take a look at `backend/config.py` and  `frontend/config.py`
+    * If user decides to change default base directory or other directory locations using env variables then please make sure to create these directories manually.
+
+* The directory will also have sqlite db and vector database data dir and also uploaded files as well notes. Therefore, it will be good if users can regularly backup the config directory.
+
 
 ## Motivation
 
 Organizing notes and personal documents seems to be a simple task, but I myself struggled a lot with it on how to do it properly. Finally my setup was just plain text/markdown files and open the folder with vim/nvim and use fzf plugin for fuzzy search within the folder.
 
-It served me well over the years, but since last couple of months I was mulling over integration with local LLM/RAG based system for somewhat better organization of personal knowledge base. I looked into existing solutions available, but I couldn't find integrated solutions that would combine notes/local documents/web-links and getting list of references along with a way to display varrious notes and files inline, so that it will be easier to cross-verify sources from which information is coming. I also felt, the application needs to have some basic authentication capabilities so that one can self-host it, allowing multiple users to share the instance and each having their own unique collection. So After all these requirements in mind, finally I decided to build Inquisitive.
+It served me well over the years, but since last couple of months I was mulling over integration with local LLM/RAG based system for somewhat better organization of personal knowledge base. I looked into existing solutions available, but I couldn't find integrated solutions that would combine notes/local documents/web-links and getting list of references along with a way to display various notes and files inline, so that it will be easier to cross-verify sources from which information is coming. I also felt, the application needs to have some basic authentication capabilities so that one can self-host it, allowing multiple users to share the instance and each having their own unique collection. So After all these requirements in mind, finally I decided to build Inquisitive.
 
-## Technical choices
+## Technical choices and brief architecture overview
 
-Actually I wanted something simpler which could be built over a weekend, but after one feature after another, things became a bit complex as well as a bit interesting also architecture wise for a self-hosted appllication. For those, who are interested in understanding tech choices, can go thorough the following details.
+In the beginning, I wanted something simpler which could be built over a weekend, but after one feature after another, things became a bit complex as well as a bit interesting also architecture wise for a self-hosted appllication. For those, who are interested in understanding tech choices and overall architecture, can go thorough the following details.
 
 * **Choice of FE/UI:**
 
     * After searching the web, I found streamlit will work well for the use-case for building chat interaface and some basic UI. Initial impression about streamlit was really good, within a short time with the help of LLM, I was able to build some basic UI. It really helped me to get started with the project quickly. But as I wanted somewhat more and more features, I felt I'll need to add more components to the project. 
 
-    * As streamlit is meant to be a stateless application and it has somewhat different design principles, it was getting harder to manage state with it for multiple users. For example, it starts new session every time whenever browser page is refreshed and it reruns the entire application once any state change in the UI is detected. This made it a bit difficult to manage and reason about state. I've read comments in the forums that people have faced issues like  sessions intended for different users are able to see content of each other. This can easily happen, if one is not careful with session state management with streamlit.
+    * As streamlit is meant to be a stateless application and it has somewhat different design principles, it was getting harder to manage state with it for multiple users. For example, it starts new session every time whenever browser page is refreshed and it reruns the entire application once any state change in the UI component is detected. This made it a bit difficult to manage and reason about state. I've read comments in the forums that people have faced issues like  sessions intended for different users are able to see content of each other. This can easily happen, if one is not careful with session state management with streamlit.
 
-    * So finally, I decided I'll need dedicated backend to manage session state of a user and on the browser side let's store  token in localstorage, which will be sent to the BE for validation. This made things much more consistent and easier to reason about. So I had to build a dedicated backend for managing auth flow and other state information. It proved to be a useful decision and made things much easier later on whenever I was adding more features.
+    * So finally, I decided I'll need a dedicated backend to manage session state of a user and on the browser side let's store  token in localstorage, which will be sent to the BE for validation. This made things much more consistent and easier to reason about. So I built a dedicated backend for managing auth flow and other state information. It proved to be a useful decision and made things much easier later on whenever I was adding more features.
 
 * **Choice of Backend stack:**
 
     * Previously, some long time back, I built [Reminiscence](https://github.com/kanishka-linux/reminiscence) using Django. So this time also in the beginning, I was thinking about using the same stack. But then I thought, maybe let's check something leaner/minimal stack this time. I also wanted to play around with some framework that has better async support, and as I was also mainly concerned with building API server, finally decided to go with FastAPI. While using FastAPI, I was missing some of the features of Django like out of box user management/authentication and most importantly automatic database migration. However, as I was mainly looking for API server, so leaner FastAPI framework, started making more sense and I was able to add extra components as needed.
 
 * **Authentication:**
+
     * for user management and authentication, fastapi-users library is used
     * Backend generates JWT token for authentication.
     * People can easily change algorithm, keys and expiry time for the token by modifying `backend/config.py`
@@ -102,18 +125,26 @@ Actually I wanted something simpler which could be built over a weekend, but aft
     * New users can be registerd from streamlit UI itself, or this auto-register from the UI can be disabled by modifying `frontend/config.py` 
 
 * **File Processing:**
+
     * Files/notes are uploaded and added to the queue for processing and immediately acknowledged after adding some metadata in sqlite db.
+
     * Background worker processes content of the job queue asynchronously
+
         * Ideally one should have used existing job queue/ worker solutions like celery backed redis, but it would have made things even more complex for self-hosting purpose, so decided to write minimal job queue using `asyncio.queue` - that processes tasks in the background backed by sqlite db. It is not fast, but it is good enough for the current use-case. Currently there is no retry mechanism, but will provide some way to retry and list failed jobs later on if needed. Please make sure, not to shutdown the backend, before jobs are completed.
         * I also considered using built-in background-task available in FastAPI, but I also wanted somewhat better control over the tasks like separate queue for different types of tasks, so decided to go with custom job queue.
+
     * Files are chunked and then converted into embeddings and stored in vector database for efficient searching
+
     * Some information about files are stored sqlite db, such as their processing status.
-    * Sqlite db also helps in some other basic API on files like list/get etc..
+
+    * Sqlite db also helps in some other basic API operations on files like list/get etc..
 
 * **Choice of vector database**
+
     * Initially after some search, I decided to use chroma db as it was easy to setup locally. But after storing thousands of web-links (from my bookmark) and their content in it, I felt a bit sluggishness in the response. Inquisitive allows multiple filters based on metadata and source type, which allows to include/exclude references from the search. Therefore, it was necessary to add index on the metadata fields in case of large document collection - which chroma db didn't allow. Therefore, I had to look for some other options, and finally settled for `lancedb` as a default vector database, since it has good support for indexing metadata fields, along with very easy installation process without any client server architecture. Support for chroma db is still there and people can easily switch between the two by making some changes in `backend/config.py`. There is also support for `milvus-lite` - which I wasn't able to test properly, but kept support for it also. People can check which vector database works for them best and switch to it.
 
 * **Search and Response:**
+
     * A correct query is formed after applying filter and user info. The query flows through the vector database
     * After results are obtained, another layer of filtering is applied in case of links or urls, to pick up the unique urls.
     * For web-links, in order to get x set of results, inquisitive will fetch 10x relevant documents and after that unique urls will be picked up. 
@@ -121,6 +152,7 @@ Actually I wanted something simpler which could be built over a weekend, but aft
     * After that, Streamlit directly interacts with OLLAMA for final processing, once relevant results are obtained from vector db.
 
 *  **Note Taking:**
+
     * Notes can be added via the UI in the mardkown format.
     * Some basic, Notes metadata is stored in the sqlite and the actual file in markdown format will be stored in the dedicated `upload directory`, after that content will be stored in vector db.
     * Notes can be edited and can be listed down using `/notes-list` prompt
@@ -128,6 +160,7 @@ Actually I wanted something simpler which could be built over a weekend, but aft
     * One can directly search within notes  with `/notes` prompt 
 
 * **Reference section:**
+
     * For every search prompt, references are listed down
     * Reference window size can be adjusted via the UI and those many references will be picked up for discussion/QnA session.
     * There is a way to get only references, without any discussion mode.
