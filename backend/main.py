@@ -41,12 +41,16 @@ def on_startup():
     asyncio.create_task(process_recursive_url_queue())
     asyncio.create_task(process_uploaded_file_queue())
 
+
 # Root endpoint
-
-
 @app.get("/")
 async def root():
     return {"message": "Welcome to FastAPI API Backend"}
+
+
+@app.get("/ping")
+async def root():
+    return {"message": "pong"}
 
 
 def start_server():
