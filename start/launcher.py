@@ -5,6 +5,7 @@ import time
 import signal
 import atexit
 import argparse
+import requests
 from frontend.config import settings as fe_settings
 from backend.config import settings as be_settings
 
@@ -115,6 +116,22 @@ def cleanup():
             print(f"Error during cleanup: {e}")
 
 
+def is_backend_ready():
+    try:
+        response = requests.get(
+            f"{fe_settings.API_URL}/ping",
+            timeout=5
+        )
+        if response.status_code == 200:
+            return True
+    except requests.exceptions.Timeout:
+        print("backend API server trying to be ready, please wait..")
+    except requests.exceptions.ConnectionError:
+        print("backend takes some time to start on the first run, please wait..")
+
+    return False
+
+
 def start_all(backend_port=8000, frontend_port=8501, log_level="debug"):
     """Start all services."""
     # Register cleanup handler
@@ -123,7 +140,12 @@ def start_all(backend_port=8000, frontend_port=8501, log_level="debug"):
     # Start backend
     start_backend(port=backend_port, log_level=log_level)
 
-    time.sleep(5)
+    for i in range(0, 600, 5):
+        if is_backend_ready():
+            break
+        else:
+            time.sleep(5)
+
     # Start frontend
     start_frontend(port=frontend_port)
 
