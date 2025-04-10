@@ -69,7 +69,7 @@ $ (venv) inquisitive-start-backend (Terminal 1)
 $ (venv) inquisitive-start-ui (Terminal 2)
 ```
 
-*Directly running backend and frontend servers*
+*Directly running backend and frontend servers - useful during development*
 
 ```
 Make sure you are in the project directory and venv is activated
@@ -87,7 +87,7 @@ $ (venv) streamlit run frontend/app.py
 
 * When BE and FE server is started for the first time, a config directory is created in the home directory `~/.config/inquisitive`.
 
-* The config directory will have two files `backend.env` and `frontend.env`. People can override default settings by providing new values in the respectivee env files.
+* The config directory will have two files `backend.env` and `frontend.env`. People can override default settings by providing new values in the respective env files.
     * For default settings values, take a look at `backend/config.py` and  `frontend/config.py`
     * If user decides to change default base directory or other directory locations using env variables then please make sure to create these directories manually.
 
@@ -98,11 +98,11 @@ $ (venv) streamlit run frontend/app.py
 
 Organizing notes and personal documents seems to be a simple task, but I myself struggled a lot with it on how to do it properly. Finally my setup was just plain text/markdown files and open the folder with vim/nvim and use fzf plugin for fuzzy search within the folder.
 
-It served me well over the years, but since last couple of months I was mulling over integration with local LLM/RAG based system for somewhat better organization of personal knowledge base. I looked into existing solutions available, but I couldn't find integrated solutions that would combine notes/local documents/web-links and getting list of references along with a way to display various notes and files inline, so that it will be easier to cross-verify sources from which information is coming. I also felt, the application needs to have some basic authentication capabilities so that one can self-host it, allowing multiple users to share the instance and each having their own unique collection. So After all these requirements in mind, finally I decided to build Inquisitive.
+It served me well over the years, but since last couple of months I was mulling over integration with local LLM/RAG based system for somewhat better organization of personal knowledge base. I looked into existing solutions available, but I couldn't find integrated solutions that would combine notes/local documents/web-links. I was also interested in getting list of references along with a way to display various notes and files inline, so that it will be easier to cross-verify sources from which information is coming. I also felt, the application needs to have some basic authentication capabilities so that one can self-host it, allowing multiple users to share the instance and each having their own unique collection. So After all these requirements in mind, finally I decided to build Inquisitive.
 
 ## Technical choices and brief architecture overview
 
-In the beginning, I wanted something simpler which could be built over a weekend, but after one feature after another, things became a bit complex as well as a bit interesting also architecture wise for a self-hosted appllication. For those, who are interested in understanding tech choices and overall architecture, can go thorough the following details.
+In the beginning, I wanted something simpler which could be built over a weekend, but after one feature after another, things started becoming a bit complex as well as a bit interesting also architecture wise for a self-hosted appllication. For those, who are interested in understanding tech choices and overall architecture, can go thorough the following details.
 
 * **Choice of FE/UI:**
 
@@ -110,7 +110,7 @@ In the beginning, I wanted something simpler which could be built over a weekend
 
     * As streamlit is meant to be a stateless application and it has somewhat different design principles, it was getting harder to manage state with it for multiple users. For example, it starts new session every time whenever browser page is refreshed and it reruns the entire application once any state change in the UI component is detected. This made it a bit difficult to manage and reason about state. I've read comments in the forums that people have faced issues like  sessions intended for different users are able to see content of each other. This can easily happen, if one is not careful with session state management with streamlit.
 
-    * So finally, I decided I'll need a dedicated backend to manage session state of a user and on the browser side let's store  token in localstorage, which will be sent to the BE for validation. This made things much more consistent and easier to reason about. So I built a dedicated backend for managing auth flow and other state information. It proved to be a useful decision and made things much easier later on whenever I was adding more features.
+    * So finally, I decided I'll need a dedicated backend to manage session state of a user and on the browser side let's store  token in localstorage, which will be sent to the BE for validation. This made things much more consistent and easier to reason about. So I ended up building a dedicated backend for managing auth flow and other state information. It proved to be a useful decision and made things much easier later on whenever I was adding more features.
 
 * **Choice of Backend stack:**
 
@@ -121,7 +121,7 @@ In the beginning, I wanted something simpler which could be built over a weekend
     * for user management and authentication, fastapi-users library is used
     * Backend generates JWT token for authentication.
     * People can easily change algorithm, keys and expiry time for the token by modifying `backend/config.py`
-    * At FE side, the token is saved locally in localstorage instead of cookies and uses this token while making every API request to BE.
+    * At FE side, the token is saved locally in localstorage instead of cookies and FE sends this token with every API request to the BE.
     * New users can be registerd from streamlit UI itself, or this auto-register from the UI can be disabled by modifying `frontend/config.py` 
 
 * **File Processing:**
@@ -130,7 +130,7 @@ In the beginning, I wanted something simpler which could be built over a weekend
 
     * Background worker processes content of the job queue asynchronously
 
-        * Ideally one should have used existing job queue/ worker solutions like celery backed redis, but it would have made things even more complex for self-hosting purpose, so decided to write minimal job queue using `asyncio.queue` - that processes tasks in the background backed by sqlite db. It is not fast, but it is good enough for the current use-case. Currently there is no retry mechanism, but will provide some way to retry and list failed jobs later on if needed. Please make sure, not to shutdown the backend, before jobs are completed.
+        * Ideally one should have used existing job queue/ worker solutions like celery backed by redis, but it would have made things even more complex for self-hosting purpose, so decided to write minimal job queue using `asyncio.queue` - that processes tasks in the background backed by sqlite db. It is not fast, but it is good enough for the current use-case. Currently there is no retry mechanism, but will provide some way to retry and list failed jobs later on if needed. Please make sure, not to shutdown the backend, before jobs are completed.
         * I also considered using built-in background-task available in FastAPI, but I also wanted somewhat better control over the tasks like separate queue for different types of tasks, so decided to go with custom job queue.
 
     * Files are chunked and then converted into embeddings and stored in vector database for efficient searching
@@ -183,7 +183,7 @@ In the beginning, I wanted something simpler which could be built over a weekend
 
 ## Some Fun Facts
 
-* This is my first major personal project, where I've used LLM models extensively while coding. I was really surprised, how much LLM can help us get it done within a short period of time. In professional setting, I've mainly worked on `elixir and golang` based tech stack and mostly worked on the backend side of things that involved heavy usage of postgres/redis. I haven't used python so far in professional setting. I use python based stack for my personal projects and I haven't started any greenfield python project for a long time. So, I wasn't aware of latest trends in python web frameworks. But despite  of all these, when I felt like building new project again, LLMs proved to be very helpful to get started with comparatively new frameworks like streamlit and fastapi and helped in generating good amount of boilerplate code easily. At first, I was simply amazed and understood why there is a craze for AI assisted coding.
+* This is my first major personal project, where I've used LLM models extensively while coding. I was really surprised, how much LLM can help us get it done within a short period of time. In professional setting, I've mainly worked with `elixir and golang` based tech stack and mostly worked on the backend side of things that involved heavy usage of postgres/redis. I haven't used python so far in professional setting. I use python based stack for my personal projects and I haven't started any greenfield python project for a long time. So, I wasn't aware of latest trends in python web frameworks. But despite  of all these, when I felt like building new project again, LLMs proved to be very helpful to get started with comparatively new frameworks like streamlit and fastapi and helped in generating good amount of boilerplate code easily. At first, I was simply amazed and understood why there is a craze for AI assisted coding.
 
 * When I wanted to add some basic auth to streamlit app, LLM helped in generating some basic code within an hour. I thought, my work has become simpler and started day-dreaming how much time I can save with LLMs if used for coding regularly. But then in the next hour, I came back to ground reality. The generated code and the approach suggested by the LLM had so many subtle bugs - which were difficult to pin-point in the beginning.
 
