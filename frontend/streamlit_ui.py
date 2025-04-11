@@ -23,7 +23,8 @@ from frontend.utils import (
     fetch_file,
     fetch_files,
     update_note_to_api_server,
-    fetch_links
+    fetch_links,
+    fetch_file_status
 )
 
 from frontend.config import settings
@@ -193,14 +194,26 @@ class OllamaChatApp:
     def process_uploaded_file(self, uploaded_file):
         if uploaded_file is not None:
             try:
-                upload_file_to_api_server(uploaded_file)
-                st.success(
-                    f"File Name: {uploaded_file.name}")
-                return True
+                submitted, filename = upload_file_to_api_server(uploaded_file)
+                if submitted:
+                    st.success(
+                        f"File: {uploaded_file.name} submitted for processing")
+
+                processed = False
+                file_status = "pending"
+                for i in range(100):
+                    time.sleep(5)
+                    _, status = fetch_file_status(filename)
+                    if status == "finished":
+                        processed = True
+                        break
+                    else:
+                        file_status = status
+                return file_status, processed
             except Exception as e:
                 st.error(f"Error processing file: {str(e)}")
-                return False
-        return False
+                return "error", False
+        return "error", False
 
     def extract_text_from_pdf(self, pdf_file):
         """Extract text from PDF file"""
@@ -383,7 +396,7 @@ Answer: """
                                 "View Document",
                                 key=f"btn_{index}_{i}",
                                 on_click=self.render_file_sync,
-                                args=(ref['source'],)
+                                args=(ref['source'], ref['page'],)
                             )
                             if ref['source_type'] == "note":
                                 cols[1].button(
@@ -449,7 +462,7 @@ Answer: """
             st.session_state.messages.append(
                 {"role": "assistant", "content": full_response})
 
-    def render_file_sync(self, file_url):
+    def render_file_sync(self, file_url, page_number=1):
         # when this even is fired, somehow
         # right sidebar content vanishes.
         # To prevent this setting this variable to False
@@ -461,7 +474,7 @@ Answer: """
             with st.spinner("Loading document..."):
                 st.session_state.is_generating = False
 
-                asyncio.run(self.render_file_async(file_url))
+                asyncio.run(self.render_file_async(file_url, page_number))
 
     def render_note_sync(self, file_url, note_id, note_filename):
         with self.main_content:
@@ -469,7 +482,7 @@ Answer: """
                 st.session_state.is_generating = False
                 asyncio.run(self.render_file_async(file_url))
 
-    async def render_file_async(self, file_url):
+    async def render_file_async(self, file_url, page_number=1):
         async with aiohttp.ClientSession() as session:
             async with session.get(
                 f"{settings.API_URL}{file_url}",
@@ -485,7 +498,7 @@ Answer: """
 
                 if content_type == "application/pdf":
                     base64_pdf = base64.b64encode(content).decode('utf-8')
-                    pdf_display = f'<embed src="data:application/pdf;base64,{base64_pdf}" width="100%" height="800" type="application/pdf">'
+                    pdf_display = f'<embed src="data:application/pdf;base64,{base64_pdf}#page={page_number}" width="100%" height="800" type="application/pdf">'
                     self.qna_tab.container(border=True).markdown(
                         pdf_display, unsafe_allow_html=True)
                 elif content_type.startswith("image/"):
@@ -905,11 +918,15 @@ Answer: """
                 if uploaded_file:
                     if st.button("Process Document"):
                         with st.spinner("Processing document..."):
-                            success = self.process_uploaded_file(uploaded_file)
-                            if success:
-                                st.success("Document Accepted for Processing")
-                            else:
+                            file_status, processed = self.process_uploaded_file(
+                                uploaded_file)
+                            if processed:
+                                st.success("Document Processed Successfully")
+                            elif file_status == "error":
                                 st.error("Error processing document")
+                            else:
+                                st.success(
+                                    f"Document is taking time to process - please wait.. status={file_status}")
             elif input_method == "File with Links":
                 uploaded_file = st.file_uploader(
                     "Upload Any file containing links", type=settings.UPLOAD_FILE_TYPES)
@@ -1039,8 +1056,8 @@ Answer: """
             st.session_state.updated_note_content = None
 
         if (st.session_state.view_mode in ["notes-list", "links-list", "files-list"]
-            or st.session_state.list_page_number_modified
-            ):
+                or st.session_state.list_page_number_modified
+                ):
             st.session_state.list_page_number_modified = False
             if st.session_state.view_mode == "notes-list":
                 self.display_notes()
