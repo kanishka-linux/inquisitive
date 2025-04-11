@@ -67,6 +67,8 @@ class Settings(BaseSettings):
     # Modify and use different embedding model if needed
     EMBEDDINGS_MODEL: str = "chroma/all-minilm-l6-v2-f32"
     EMBEDDINGS_DIMENSION: int = 384
+    TEXT_SPLITTER_CHUNK_SIZE:  int = 1500
+    TEXT_SPLITTER_CHUNK_OVERLAP:  int = 150
 
     # Modify if needed to use other relational DB
     DATABASE_URL: str = f"sqlite+aiosqlite:///{SQLITE_DB_PATH}"
