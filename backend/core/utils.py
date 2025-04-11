@@ -2,13 +2,21 @@ import PyPDF2
 import mimetypes
 import uuid
 import os
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from backend.config import settings
-from datetime import datetime
 import shutil
 from backend.core.logging import get_logger
 
 
 logger = get_logger()
+
+
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=settings.TEXT_SPLITTER_CHUNK_SIZE,
+    chunk_overlap=settings.TEXT_SPLITTER_CHUNK_OVERLAP,
+    length_function=len,
+    separators=["\n\n", "\n", " ", ""]
+)
 
 
 def is_file_pdf(file_path):
@@ -50,15 +58,45 @@ def save_file(content, title):
 
 def extract_text_from_pdf(pdf_file):
     """Extract text from PDF file"""
+    texts = []
     try:
         pdf_reader = PyPDF2.PdfReader(pdf_file)
-        text = ""
-        for page in pdf_reader.pages:
-            text += page.extract_text()
-        return text
+        for i, page in enumerate(pdf_reader.pages):
+            texts.append({
+                "text": page.extract_text(),
+                "page_number": i+1
+            })
+        return texts
     except Exception as err:
         logger.error(f"Error processing {pdf_file}: {err}")
         return None
+
+
+def chunk_pdf_content(text_content_list):
+    texts = []
+    for content_dict in text_content_list:
+        text = content_dict["text"]
+        page_number = content_dict["page_number"]
+        for splitted_text in text_splitter.split_text(text):
+            texts.append({
+                "text": splitted_text,
+                "page_number": page_number
+            })
+    return texts
+
+
+def chunk_non_pdf_content(text_content):
+    texts = []
+    for i, splitted_text in enumerate(text_splitter.split_text(text_content)):
+        texts.append({
+            "text":  splitted_text,
+            "page_number": i + 1
+        })
+    return texts
+
+
+def chunk_link_content(text_content):
+    return text_splitter.split_text(text_content)
 
 
 def update_file_with_backup(content, filename):
