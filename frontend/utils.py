@@ -103,11 +103,10 @@ def upload_file_to_api_server(uploaded_file):
 
     if response.status_code == 202:
         result = response.json()
-        st.success("File uploaded successfully!")
-        return result["file_url"]
+        return True, result["filename"]
     else:
         st.error(f"Upload failed: {response.text}")
-        return uploaded_file.name
+        return False, uploaded_file.name
 
 
 def upload_note_to_api_server(content, title):
@@ -343,6 +342,23 @@ def fetch_file(file_url):
         return response.content.decode("utf-8")
 
     return "failed to fetch  content"
+
+
+def fetch_file_status(filename):
+    headers = {
+        "Authorization": f"Bearer {st.session_state.token}"
+    }
+
+    response = requests.get(
+        f"{settings.API_URL}/file/status/{filename}",
+        headers=headers
+    )
+
+    if response.status_code == 200:
+        result = response.json()
+        return True, result["status"]
+
+    return False, "error"
 
 
 # TODO: WIP markdown editor
