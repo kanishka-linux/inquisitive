@@ -166,3 +166,7 @@ class LinksList(schemas.BaseModel):
 class FilesList(schemas.BaseModel):
     files: List[FileUploadResponse]
     total: int
+
+
+class FilePollingResponse(schemas.BaseModel):
+    status: str
