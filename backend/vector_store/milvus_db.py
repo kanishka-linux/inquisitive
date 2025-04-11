@@ -1,6 +1,5 @@
 from langchain_ollama import OllamaEmbeddings
 from langchain.schema import Document
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 from pymilvus import MilvusClient, DataType
 import json
 import uuid
@@ -9,7 +8,10 @@ from backend.core.logging import get_logger
 from backend.core.utils import (
     extract_text_from_pdf,
     is_file_pdf,
-    read_text_file_content
+    read_text_file_content,
+    chunk_pdf_content,
+    chunk_non_pdf_content,
+    chunk_link_content
 )
 from backend.api.models import SourceType
 
@@ -26,14 +28,6 @@ milvus_client = MilvusClient("./milvus_data.db")
 
 # Define collection name
 COLLECTION_NAME = settings.VECTOR_STORE_COLLECTION_NAME
-
-
-text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size=512,
-    chunk_overlap=50,
-    length_function=len,
-    separators=["\n\n", "\n", " ", ""]
-)
 
 
 # Create collection if it doesn't exist
@@ -157,14 +151,14 @@ def add_documents(documents):
 def add_link_content_to_vector_store(
         text_content, source, title, link_id, username):
 
-    texts = text_splitter.split_text(text_content)
+    texts = chunk_link_content(text_content)
 
     documents = [
         Document(
             page_content=f"{title}\n\n{text}",
             metadata={
                 "source": source,
-                "page": f"{i}",
+                "page": f"{i+1}",
                 "title": title,
                 "belongs_to": username,
                 "link_id": f"{link_id}",
@@ -180,12 +174,15 @@ def add_link_content_to_vector_store(
 def add_uploaded_document_content_to_vector_store(
         file_path, file_name, file_url, file_id, username):
 
+    texts = []
     if is_file_pdf(file_path):
-        text_content = extract_text_from_pdf(file_path)
+        text_content_list = extract_text_from_pdf(file_path)
+        texts = chunk_pdf_content(text_content_list)
+
     else:
         text_content = read_text_file_content(file_path)
+        texts = chunk_non_pdf_content(text_content)
 
-    texts = text_splitter.split_text(text_content)
     if file_name.endswith('.md'):
         source_type = SourceType.NOTE
     else:
@@ -193,16 +190,16 @@ def add_uploaded_document_content_to_vector_store(
 
     documents = [
         Document(
-            page_content=text,
+            page_content=content_dict['text'],
             metadata={
                 "source": file_url,
-                "page": f"{i}",
+                "page": f"{content_dict['page_number']}",
                 "filename": file_name,
                 "belongs_to": username,
                 "file_id": f"{file_id}",
                 "source_type": source_type
             }
-        ) for i, text in enumerate(texts)
+        ) for content_dict in texts
     ]
 
     add_documents(documents)
