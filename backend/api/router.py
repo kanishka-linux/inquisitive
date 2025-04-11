@@ -54,7 +54,8 @@ from backend.api.schemas import (
     NoteUpdateRequest,
     NoteUpdateResponse,
     LinksList,
-    FilesList
+    FilesList,
+    FilePollingResponse
 )
 from backend.api.service import validate_jwt_token
 from backend.database import get_async_session
@@ -193,7 +194,7 @@ async def upload_file(
     )
     # Return the file URL to the client
     return {
-        "filename": file.filename,
+        "filename": unique_filename,
         "file_url": file_url,
         "status": ProcessingStatus.PENDING,
         "created_at": created_at
@@ -468,6 +469,34 @@ async def get_file(
         path=file_path,
         filename=file_record.original_filename,
         media_type=file_record.content_type
+    )
+
+
+@file_router.get(
+    "/status/{filename}",
+    response_model=FilePollingResponse,
+    status_code=200)
+async def get_file_status(
+    filename: str,
+    user: User = Depends(current_active_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    # Check if the file exists in the database
+    result = await session.execute(
+        select(FileUpload).where(
+            FileUpload.filename == filename,
+            FileUpload.user_id == user.id
+        )
+    )
+    file_record = result.scalars().first()
+
+    if not file_record:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File not found"
+        )
+    return FilePollingResponse(
+        status=file_record.status
     )
 
 
