@@ -311,3 +311,29 @@ def remove_documents(filename, username):
         logger.error(
             f"Error removing documents with filename={filename}: {str(err)}")
         return False
+
+
+def remove_link_documents(link_id, username):
+    try:
+        # Build explicit filter expression for Milvus
+        filter_expr = f"link_id == '{link_id}' && belongs_to == '{username}'"
+
+        # Delete documents matching the filter
+        result = milvus_client.delete(
+            collection_name=COLLECTION_NAME,
+            filter=filter_expr
+        )
+
+        if result and result.get('delete_count', 0) > 0:
+            logger.info(
+                f"Removed {result.get('delete_count', 0)} documents with link_id={link_id} belonging to user={username}")
+            return True
+        else:
+            logger.warning(
+                f"No documents found with link_id={link_id} belonging to user={username}")
+            return False
+
+    except Exception as err:
+        logger.error(
+            f"Error removing documents with link_id={link_id}: {str(err)}")
+        return False

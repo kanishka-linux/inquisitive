@@ -194,3 +194,32 @@ def remove_documents(filename, username):
         logger.error(
             f"Error removing documents with filename={filename}: {str(err)}")
         return False
+
+
+def remove_link_documents(link_id, username):
+    try:
+        filter_dict = {
+            "$and": [
+                {"link_id": {"$eq": f"{link_id}"}},
+                {"belongs_to": {"$eq": username}}
+            ]
+        }
+
+        # Access the underlying Chroma collection
+        # Use the get method with the where parameter
+        matching_docs = vector_store._collection.get(where=filter_dict)
+        if matching_docs and len(matching_docs['ids']) > 0:
+            # Delete the documents using their IDs
+            vector_store.delete(ids=matching_docs['ids'])
+            logger.info(
+                f"Removed documents with link_id={link_id} belonging to user={username}")
+            return True
+        else:
+            logger.warning(
+                f"No documents found with link_id={link_id} belonging to user={username}")
+            return False
+
+    except Exception as err:
+        logger.error(
+            f"Error removing documents with link_id={link_id}: {str(err)}")
+        return False

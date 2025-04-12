@@ -65,6 +65,9 @@ def initialize_collection():
 
         # Index on filename field
         table.create_scalar_index("filename", index_type="BTREE")
+
+        # Index on link_id: only applicable for links
+        table.create_scalar_index("link_id", index_type="BTREE")
         logger.info(f"Created new LanceDB table: {TABLE_NAME}")
     else:
         logger.info(f"Using existing LanceDB table: {TABLE_NAME}")
@@ -275,4 +278,33 @@ def remove_documents(filename, username):
     except Exception as err:
         logger.error(
             f"Error removing documents with filename={filename}: {str(err)}")
+        return False
+
+
+def remove_link_documents(link_id, username):
+    try:
+        # Open the table
+        table = db.open_table(TABLE_NAME)
+
+        # Build filter expression for LanceDB
+        filter_expr = f"link_id = '{link_id}' AND belongs_to = '{username}'"
+
+        # Get count before deletion for reporting
+        count_before = table.count_rows(filter_expr)
+
+        # Delete documents matching the filter
+        table.delete(filter_expr)
+
+        if count_before > 0:
+            logger.info(
+                f"Removed {count_before} documents with filename={link_id} belonging to user={username}")
+            return True
+        else:
+            logger.warning(
+                f"No documents found with filename={link_id} belonging to user={username}")
+            return False
+
+    except Exception as err:
+        logger.error(
+            f"Error removing documents with filename={link_id}: {str(err)}")
         return False
