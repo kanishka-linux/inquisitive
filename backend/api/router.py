@@ -8,7 +8,7 @@ from fastapi import (
     status
 )
 from fastapi.responses import FileResponse
-from sqlalchemy import select, desc, func
+from sqlalchemy import select, desc, func, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.dependencies import (
@@ -55,7 +55,8 @@ from backend.api.schemas import (
     NoteUpdateResponse,
     LinksList,
     FilesList,
-    FilePollingResponse
+    FilePollingResponse,
+    ResourceDeletedResponse
 )
 from backend.api.service import validate_jwt_token
 from backend.database import get_async_session
@@ -429,6 +430,41 @@ async def update_note(
     )
 
 
+@file_router.delete(
+    "/note/{filename}",
+    response_model=ResourceDeletedResponse,
+    status_code=200)
+async def delete_note(
+    filename: str,
+    user: User = Depends(current_active_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+
+    result = await session.execute(
+        select(Note)
+        .where(Note.filename == filename, Note.user_id == user.id)
+    )
+    notes = result.scalars().all()
+
+    if len(notes) == 1:
+        note = notes[0]
+        await session.execute(
+            delete(Note).where(Note.id == note.id)
+        )
+        vector_store.remove_documents(
+            note.filename,
+            user.email
+        )
+        await session.commit()
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File not found"
+        )
+
+    return ResourceDeletedResponse(status="deleted")
+
+
 @file_router.get("/{filename}")
 async def get_file(
     filename: str,
@@ -470,6 +506,41 @@ async def get_file(
         filename=file_record.original_filename,
         media_type=file_record.content_type
     )
+
+
+@file_router.delete(
+    "/{filename}",
+    response_model=ResourceDeletedResponse,
+    status_code=200)
+async def delete_uploaded_file(
+    filename: str,
+    user: User = Depends(current_active_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+
+    result = await session.execute(
+        select(FileUpload)
+        .where(FileUpload.filename == filename, FileUpload.user_id == user.id)
+    )
+    files = result.scalars().all()
+
+    if len(files) == 1:
+        fl = files[0]
+        await session.execute(
+            delete(FileUpload).where(FileUpload.id == fl.id)
+        )
+        vector_store.remove_documents(
+            fl.filename,
+            user.email
+        )
+        await session.commit()
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File not found"
+        )
+
+    return ResourceDeletedResponse(status="deleted")
 
 
 @file_router.get(
@@ -613,6 +684,41 @@ async def recursive_crawl(
     await recursive_url_processing_queue.put((str(url), user, links_data.headers))
 
     return LinkCrawlResponse(status="submitted", url=url)
+
+
+@link_router.delete(
+    "/{id}",
+    response_model=ResourceDeletedResponse,
+    status_code=200)
+async def delete_link(
+    id: int,
+    user: User = Depends(current_active_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+
+    result = await session.execute(
+        select(Link)
+        .where(Link.id == id, Link.user_id == user.id)
+    )
+    links = result.scalars().all()
+
+    if len(links) == 1:
+        link = links[0]
+        await session.execute(
+            delete(Link).where(Link.id == link.id)
+        )
+        vector_store.remove_link_documents(
+            link.id,
+            user.email
+        )
+        await session.commit()
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File not found"
+        )
+
+    return ResourceDeletedResponse(status="deleted")
 
 
 @document_router.post("/search", response_model=DocumentSearchResponse, status_code=200)

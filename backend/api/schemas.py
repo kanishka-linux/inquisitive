@@ -170,3 +170,7 @@ class FilesList(schemas.BaseModel):
 
 class FilePollingResponse(schemas.BaseModel):
     status: str
+
+
+class ResourceDeletedResponse(schemas.BaseModel):
+    status: str
