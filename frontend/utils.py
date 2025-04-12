@@ -361,6 +361,57 @@ def fetch_file_status(filename):
     return False, "error"
 
 
+def delete_file(filename):
+    headers = {
+        "Authorization": f"Bearer {st.session_state.token}"
+    }
+
+    response = requests.delete(
+        f"{settings.API_URL}/file/{filename}",
+        headers=headers
+    )
+
+    if response.status_code == 200:
+        result = response.json()
+        return True, result["status"]
+
+    return False, "error"
+
+
+def delete_note(filename):
+    headers = {
+        "Authorization": f"Bearer {st.session_state.token}"
+    }
+
+    response = requests.delete(
+        f"{settings.API_URL}/file/note/{filename}",
+        headers=headers
+    )
+
+    if response.status_code == 200:
+        result = response.json()
+        return True, result["status"]
+
+    return False, "error"
+
+
+def delete_link(link_id):
+    headers = {
+        "Authorization": f"Bearer {st.session_state.token}"
+    }
+
+    response = requests.delete(
+        f"{settings.API_URL}/links/{link_id}",
+        headers=headers
+    )
+
+    if response.status_code == 200:
+        result = response.json()
+        return True, result["status"]
+
+    return False, "error"
+
+
 # TODO: WIP markdown editor
 def create_markdown_editor(default_content, key, height):
     # Define the HTML and JavaScript for the markdown editor
