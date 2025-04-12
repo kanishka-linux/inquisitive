@@ -24,7 +24,10 @@ from frontend.utils import (
     fetch_files,
     update_note_to_api_server,
     fetch_links,
-    fetch_file_status
+    fetch_file_status,
+    delete_note,
+    delete_link,
+    delete_file
 )
 
 from frontend.config import settings
@@ -634,7 +637,7 @@ Answer: """
             st.session_state.list_page_number_modified = True
             st.rerun()
 
-        header_cols = self.main_content.columns([1, 5, 5, 2])
+        header_cols = self.main_content.columns([1, 5, 5, 2, 2])
         header_cols[0].write("**ID**")
         header_cols[1].write("**Title**")
         header_cols[2].write("**Updated At**")
@@ -645,7 +648,7 @@ Answer: """
 
         # Display each uploaded file
         for i, record in enumerate(records):
-            cols = self.main_content.columns([1, 5, 5, 2])
+            cols = self.main_content.columns([1, 5, 5, 2, 2])
 
             # Display ID
             cols[0].write(f"{i+offset+1}")
@@ -665,8 +668,15 @@ Answer: """
                 on_click=self.render_file_sync,
                 args=(url,))
 
-    def display_notes(self):
+            delete_key = f"delete_file_{i+offset+1}",
+            cols[4].button(
+                "Delete",
+                key=delete_key,
+                on_click=self.delete_file_btn_clicked,
+                args=(title, )
+            )
 
+    def display_notes(self):
         page_size = settings.LIST_PAGE_SIZE
 
         # Initialize session state for page number if not exists
@@ -712,7 +722,7 @@ Answer: """
             st.session_state.list_page_number_modified = True
             st.rerun()
 
-        header_cols = self.main_content.columns([1, 5, 5, 2, 2])
+        header_cols = self.main_content.columns([1, 5, 5, 2, 2, 2])
         header_cols[0].write("**ID**")
         header_cols[1].write("**Title**")
         header_cols[2].write("**Updated At**")
@@ -723,7 +733,7 @@ Answer: """
 
         # Display each note
         for i, note in enumerate(records):
-            cols = self.main_content.columns([1, 5, 5, 2, 2])
+            cols = self.main_content.columns([1, 5, 5, 2, 2, 2])
 
             # Display ID
             cols[0].write(f"{i+offset+1}")
@@ -752,6 +762,13 @@ Answer: """
                 key=f"edit_note_button_{note['id']}",
                 on_click=self.edit_note_btn_clicked,
                 args=(url,)
+            )
+
+            cols[5].button(
+                "Delete",
+                key=f"delete_note_button_{note['id']}",
+                on_click=self.delete_note_btn_clicked,
+                args=(note["filename"],)
             )
 
     def display_links(self):
@@ -801,18 +818,19 @@ Answer: """
             st.session_state.list_page_number_modified = True
             st.rerun()
 
-        header_cols = self.main_content.columns([1, 5, 5, 10])
+        header_cols = self.main_content.columns([1, 5, 5, 10, 3])
         header_cols[0].write("**ID**")
         header_cols[1].write("**Title**")
         header_cols[2].write("**Updated At**")
         header_cols[3].write("**URL**")
+        header_cols[4].write("**Action**")
 
         # Add a separator
         self.main_content.markdown("---")
 
         # Display each note
         for i, link in enumerate(records):
-            cols = self.main_content.columns([1, 5, 5, 10])
+            cols = self.main_content.columns([1, 5, 5, 10, 3])
 
             # Display ID
             cols[0].write(f"{i+offset+1}")
@@ -829,10 +847,56 @@ Answer: """
 
             cols[3].write(url)
 
+            cols[4].button(
+                "Delete",
+                key=f"delete_link_button_{i+offset+1}",
+                on_click=self.delete_link_btn_clicked,
+                args=(link["id"], link["title"], )
+            )
+
     def edit_note_btn_clicked(self, file_url):
         st.session_state.view_mode = "edit-note"
         st.session_state.edit_note_url = file_url
         st.session_state.right_sidebar_rendered = False
+
+    @st.dialog("Confirmation")
+    def delete_file_btn_clicked(self, filename):
+        st.write(f"Are you sure you want to delete {filename}?")
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            if st.button("Yes", key=f"{filename}_confirm_yes", use_container_width=True):
+                resp, status = delete_file(filename)
+                if status == "deleted":
+                    st.rerun()
+        with col2:
+            if st.button("No", key=f"{filename}_confirm_no", use_container_width=True):
+                st.rerun()
+
+    @st.dialog("Confirmation")
+    def delete_note_btn_clicked(self, filename):
+        st.write(f"Are you sure you want to delete {filename}?")
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            if st.button("Yes", key=f"{filename}_confirm_yes", use_container_width=True):
+                resp, status = delete_note(filename)
+                if status == "deleted":
+                    st.rerun()
+        with col2:
+            if st.button("No", key=f"{filename}_confirm_no", use_container_width=True):
+                st.rerun()
+
+    @st.dialog("Confirmation")
+    def delete_link_btn_clicked(self, link_id, title):
+        st.write(f"Are you sure you want to delete {title}?")
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            if st.button("Yes", key=f"{link_id}_link_confirm_yes", use_container_width=True):
+                resp, status = delete_link(link_id)
+                if status == "deleted":
+                    st.rerun()
+        with col2:
+            if st.button("No", key=f"{link_id}_link_confirm_no", use_container_width=True):
+                st.rerun()
 
     def edit_notes(self, file_url):
         filename = file_url.rsplit("/")[-1]
@@ -1057,7 +1121,7 @@ Answer: """
 
         if (st.session_state.view_mode in ["notes-list", "links-list", "files-list"]
                 or st.session_state.list_page_number_modified
-                ):
+            ):
             st.session_state.list_page_number_modified = False
             if st.session_state.view_mode == "notes-list":
                 self.display_notes()
