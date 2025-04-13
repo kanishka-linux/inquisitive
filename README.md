@@ -120,7 +120,7 @@ In the beginning, I wanted something simpler which could be built over a weekend
 
     * for user management and authentication, fastapi-users library is used
     * Backend generates JWT token for authentication.
-    * People can easily change algorithm, keys and expiry time for the token by modifying `backend/config.py`
+    * People can easily change jwt algorithm, secret keys and expiry time for the token by modifying `backend/config.py`
     * At FE side, the token is saved locally in localstorage instead of cookies and FE sends this token with every API request to the BE.
     * New users can be registerd from streamlit UI itself, or this auto-register from the UI can be disabled by modifying `frontend/config.py` 
 
@@ -172,6 +172,8 @@ In the beginning, I wanted something simpler which could be built over a weekend
 ## Sequence diagram for general flow
 
 ![sequence-diagram](/images/sequence-diagram.png)
+
+* API documentation: After running the backend, API documentation can be found at `http://localhost:8000/redoc`
 
 ## So After building, is it really serving the purpose it is supposed to serve?
 
