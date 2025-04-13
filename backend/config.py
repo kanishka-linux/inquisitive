@@ -49,6 +49,9 @@ class Settings(BaseSettings):
     UPLOAD_DIR_PATH: Path = Path(UPLOAD_DIR)
     UPLOAD_DIR_PATH.mkdir(exist_ok=True)
 
+    LINKS_JOB_QUEUE_CONCURRENCY: int = 100
+    FILES_JOB_QUEUE_CONCURRENCY: int = 50
+
     # Sqlite Path
     SQLITE_DB_PATH: str = os.path.join(BASE_DIR, "inquisitive.db")
 

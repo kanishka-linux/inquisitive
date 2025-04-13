@@ -5,6 +5,7 @@ from backend.vector_store.adapter import vector_db
 from backend.core.logging import get_logger
 from backend.database import async_session_maker
 from sqlalchemy import select, func
+from backend.config import settings
 
 vector_store = vector_db()
 
@@ -14,7 +15,7 @@ logger = get_logger()
 
 # Create a queue for background processing
 file_processor_queue = asyncio.Queue()
-concurrency_limit = asyncio.Semaphore(4)
+concurrency_limit = asyncio.Semaphore(settings.FILES_JOB_QUEUE_CONCURRENCY)
 
 
 async def process_uploaded_file_queue():

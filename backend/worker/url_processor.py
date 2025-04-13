@@ -8,6 +8,7 @@ from backend.core.logging import get_logger
 from urllib.parse import urlparse
 from backend.database import async_session_maker
 from sqlalchemy import select
+from backend.config import settings
 
 
 vector_store = vector_db()
@@ -17,7 +18,7 @@ logger = get_logger()
 
 # Create a queue for background processing
 url_processing_queue = asyncio.Queue()
-concurrency_limit = asyncio.Semaphore(4)
+concurrency_limit = asyncio.Semaphore(settings.LINKS_JOB_QUEUE_CONCURRENCY)
 
 # Helper function to get base URL
 
@@ -120,7 +121,7 @@ async def process_single_url(link_id, url, user_email, headers):
                                 # Update status to finished
                                 link.status = ProcessingStatus.FINISHED
                                 logger.info(
-                                    f"Successfully processed URL {url} for user {user_email}")
+                                    f"Successfully processed URL {url} for user {user_email} and link_id={link_id}")
                             else:
                                 logger.error(
                                     f"Failed to fetch URL {url}: HTTP status {response.status}")
