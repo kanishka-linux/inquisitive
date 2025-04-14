@@ -391,7 +391,8 @@ Answer: """
                             args=(ref['source'], f"radio_{index}_{i}",)
                         )
                         if ref['text']:
-                            st.markdown(ref['text'])
+                            txt = re.sub(r'\n+', '\n', ref['text'])
+                            st.markdown(txt[:500])
                         if ref['filename']:
 
                             cols = st.columns([5, 3])
