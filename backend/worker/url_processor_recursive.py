@@ -58,7 +58,8 @@ async def crawl_url(url, user, headers):
         max_depth=2,
         timeout=300,
         use_async=True,
-        extractor=bs4_extractor
+        extractor=bs4_extractor,
+        base_url=get_base_url(url)
     )
     # Acquire the semaphore to limit concurrency
     async with concurrency_limit:
