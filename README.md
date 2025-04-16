@@ -49,7 +49,7 @@ $ ollama pull deepseek-r1:1.5b
 $ ollama serve
 ```
 
-*Install and run backend server and frontend chat interface*
+### Install and run backend server and frontend chat interface*
 
 ```
 $ python3.11 -m venv venv
@@ -161,7 +161,7 @@ In the beginning, I wanted something simpler which could be built over a weekend
 
 * **Reference section:**
 
-    * For every search prompt, references are listed down
+    * For every search result, references are listed down
     * Reference window size can be adjusted via the UI and those many references will be picked up for discussion/QnA session.
     * There is a way to get only references, without any discussion mode.
     * References will have both include/exclude buttons and view documents button - wherever possible.
@@ -173,7 +173,8 @@ In the beginning, I wanted something simpler which could be built over a weekend
 
 ![sequence-diagram](/images/sequence-diagram.png)
 
-* API documentation: After running the backend, API documentation can be found at `http://localhost:8000/redoc`
+* API documentation: After running the backend, API documentation can be found at `http://localhost:8000/redoc`.
+* As BE is completely separated, anyone intending to build differnt UI, will be able to do it easily by following BE API documentation.
 
 ## So After building, is it really serving the purpose it is supposed to serve?
 
