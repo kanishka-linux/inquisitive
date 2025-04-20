@@ -75,13 +75,23 @@ $ (venv) inquisitive-start-ui (Terminal 2)
 Make sure you are in the project directory and venv is activated
 
 $ (venv) pip install -r requirements.txt
-$ (venv) uvicorn backend.main:app --reload --port 8000
+$ (venv) uvicorn backend.main:app --reload --port 8000 --log-level debug
 
 Open Another terminal in the same project directory and activate venv
 
 $ (venv) export STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
 $ (venv) streamlit run frontend/app.py
 ```
+
+## Notes on Installation and self-hosting
+
+Inquisitive, is intended to run on your personal computer/laptop and thus it has been designed in such a way that everything can be installed locally as easily as possible. However, depending on where you want to install it some modifications maybe needed for better security.
+
+* For installing locally on your local network where security is not a major concern, nothing specific extra is needed and above installation instructions will work as it is, only make sure port 8000 (backend) and port 8501 (Frontend) are available. Use command `$ lsof -i :8501` and `lsof -i :8000` to re-verify nothing is running on the ports before starting the application.
+
+* When installing on a shared network, make sure to setup https for extra layer of security. Please check documentation of uvicorn and streamlit on how to setup https certificates.
+
+* When self-hosting on cloud or some vps provider, make sure to place reverse-proxy like nginx in front of the application and setup https certificate.
 
 ## Config Directory
 
@@ -115,6 +125,8 @@ In the beginning, I wanted something simpler which could be built over a weekend
 * **Choice of Backend stack:**
 
     * Previously, some long time back, I built [Reminiscence](https://github.com/kanishka-linux/reminiscence) using Django. So this time also in the beginning, I was thinking about using the same stack. But then I thought, maybe let's check something leaner/minimal stack this time. I also wanted to play around with some framework that has better async support, and as I was also mainly concerned with building API server, finally decided to go with FastAPI. While using FastAPI, I was missing some of the features of Django like out of box user management/authentication and most importantly automatic database migration. However, as I was mainly looking for API server, so leaner FastAPI framework, started making more sense and I was able to add extra components as needed.
+
+    * For ORM, I've used `sqlalchemy` to talk to sqlite database. Normally I prefer plain sql, instead of ORM, but in this case ORM provides ability to switch between multiple different database. In case someone wants to use postgres instead of sqlite, they should be able to switch to it, with some modification in configs.
 
 * **Authentication:**
 
