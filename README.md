@@ -1,4 +1,4 @@
-# Inquisitive: A personal self-hosted knowledge base with touch of LLM/RAG
+# Inquisitive: A personal self-hosted knowledge base with a touch of LLM/RAG
 
 **Inquisitive** is a fully self-hosted LLM/RAG based application that allows you to create your own personal knowledge base which you can easily search and organize.
 
@@ -11,15 +11,15 @@
 * Upload files of various formats and store them in vector database
 * Add links/urls whose contents will be fetched automatically and will be added to the vector db
 * Add links in bulk or crawl a given link recursively
-* Add notes in markdown format with the capability to edit later on
+* Add notes in markdown format with the capability to edit/delete later on from the UI itself.
 * Focussed mode prompt shortcuts: `/links, /notes, /files` - to narrow down search based on source type.
 * streamlit based UI for chat interface
 * JWT based auth for basic user management based on fastapi and sqlite
-* Multiple vector database backend support - default is lancedb.
+* Multiple vector database backend support - default is `lancedb`.
 * Ability to choose between multiple locally installed ollama models from the UI itself
 * Listing of reference while discussing with ollama models
 * View reference sources inline in case of notes and uploaded file.
-* Ability to include/exclude particular references for better focussed search and discussion
+* Ability to include/exclude particular references for better focussed search and discussion.
 * Ability to select different window size of references - so that one can adjust the context size which will be sent to the llm models
 
 ## Installation
