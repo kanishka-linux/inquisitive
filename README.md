@@ -60,7 +60,7 @@ $ (venv) pip install -e .
 $ (venv) inquisitive-start (It will start both BE and FE. Starting BE may take some time on the first run)
 ```
 
-*In case one wants to run backend and FE separately on separate terminals*
+*In case one wants to run backend and FE separately on separate terminals* - This is the preferred approach
 
 ```
 Make sure you are in the same project directory and venv is activated on both the terminals 
@@ -214,6 +214,10 @@ In the beginning, I wanted something simpler which could be built over a weekend
 
 * To process thousands of links, Inquisitive will take quite a bit amount of time. During that period please don't shut-down the backend, since pending jobs won't get picked up when the backend service starts again. It is on TODO list, to allow commands to pick up pending jobs after restart.
 
+## License
+
+**AGPL-3.0**
+
 ## Contacts
 
-* People can contact me on the email provided on the github profile page.
+* [E-mail](mailto:kanishka.linux@gmail.com)
