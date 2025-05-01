@@ -43,6 +43,10 @@ def start_backend(port=8000, log_level="debug"):
 def start_frontend(port=8501):
     """Start the Streamlit frontend."""
     print(f"Starting Streamlit frontend on port {port}...")
+    custom_env = {
+        "STREAMLIT_SERVER_HEADLESS": "true",
+        "STREAMLIT_BROWSER_GATHER_USAGE_STATS": "false"
+    }
     cmd = [
         sys.executable,
         "-m",
@@ -56,6 +60,7 @@ def start_frontend(port=8501):
     process = subprocess.Popen(
         cmd,
         text=True,
+        env=custom_env,
         # Use shell=True on Windows
         shell=sys.platform == "win32",
         stdout=subprocess.PIPE,
@@ -69,6 +74,10 @@ def start_frontend(port=8501):
 def start_frontend_separately():
     """Start the Streamlit frontend."""
     print(f"Starting Streamlit frontend on port {fe_settings.SERVER_PORT}...")
+    custom_env = {
+        "STREAMLIT_SERVER_HEADLESS": "true",
+        "STREAMLIT_BROWSER_GATHER_USAGE_STATS": "false"
+    }
     cmd = [
         sys.executable,
         "-m",
@@ -83,6 +92,7 @@ def start_frontend_separately():
     process = subprocess.Popen(
         cmd,
         text=True,
+        env=custom_env,
         # Use shell=True on Windows
         shell=sys.platform == "win32",
         stdout=subprocess.PIPE,
