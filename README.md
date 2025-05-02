@@ -214,9 +214,15 @@ In the beginning, I wanted something simpler which could be built over a weekend
 
 * To process thousands of links, Inquisitive will take quite a bit amount of time. During that period please don't shut-down the backend, since pending jobs won't get picked up when the backend service starts again. It is on TODO list, to allow commands to pick up pending jobs after restart.
 
-## License
+## Copyright And License
 
-**AGPL-3.0**
+**Inquisitive** is distributed under **AGPL v3.0** License
+
+Copyright © 2025 Abhishek K
+
+SPDX-License-Identifier: AGPL-3.0-or-later
+
+For the full license text, see the LICENSE file in the repository or visit https://www.gnu.org/licenses/agpl-3.0.html.
 
 ## Contacts
 
