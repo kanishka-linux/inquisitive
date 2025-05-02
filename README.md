@@ -57,10 +57,9 @@ $ source venv/bin/activate
 $ (venv) git clone https://github.com/kanishka-linux/inquisitive.git
 $ (venv) cd inquisitive
 $ (venv) pip install -e .
-$ (venv) inquisitive-start (It will start both BE and FE. Starting BE may take some time on the first run)
 ```
 
-*In case one wants to run backend and FE separately on separate terminals* - This is the preferred approach
+*Run backend and FE separately on separate terminals* - This is the preferred approach
 
 ```
 Make sure you are in the same project directory and venv is activated on both the terminals 
@@ -83,6 +82,12 @@ $ (venv) export STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
 $ (venv) streamlit run frontend/app.py
 ```
 
+*Run both BE and FE servers using single command* - experimental
+
+```
+$ (venv) inquisitive-start (It will start both BE and FE. Starting BE may take some time on the first run)
+```
+
 ## Notes on Installation and self-hosting
 
 Inquisitive, is intended to run on your personal computer/laptop and thus it has been designed in such a way that everything can be installed locally as easily as possible. However, depending on where you want to install it some modifications maybe needed for better security.
@@ -92,6 +97,8 @@ Inquisitive, is intended to run on your personal computer/laptop and thus it has
 * When installing on a shared network, make sure to setup https for extra layer of security. Please check documentation of uvicorn and streamlit on how to setup https certificates.
 
 * When self-hosting on cloud or some vps provider, make sure to place reverse-proxy like nginx in front of the application and setup https certificate.
+
+* If one wants to self-host Inquisitive for somewhat larger audience number (let's say 50+), then it may require a bit of different deployment strategy and depending on the scale some of the components may require some modifications. Please open github issue or contact via email (provided in the contacts section), in case people want to discuss how to deploy the application for a somewhat larger target audience.
 
 ## Config Directory
 
@@ -196,9 +203,10 @@ In the beginning, I wanted something simpler which could be built over a weekend
 
 * Discussion/QnA session with LLM  - Quality of this depends a lot upon the model. Models with 7B+ parameter give really good result provided the machine has dedicated gpu. For machines with only cpu, models with 1-2B+ parameters can give response a bit quickly, but they are mostly irrelevant and not upto the mark and too much hallucination. So machines with only CPU, can use Inquisitive mainly for organizing the knowledge-base and searching efficiently within it, but not for relevant discussion/QnA purpose. People can try out multiple models and see what works for them best.
 
+
 ## Some Fun Facts
 
-* This is my first major personal project, where I've used LLM models extensively while coding. I was really surprised, how much LLM can help us get it done within a short period of time. In professional setting, I've mainly worked with `elixir and golang` based tech stack and mostly worked on the backend side of things that involved heavy usage of postgres/redis. I haven't used python so far in professional setting. I use python based stack for my personal projects and I haven't started any greenfield python project for a long time. So, I wasn't aware of latest trends in python web frameworks. But despite  of all these, when I felt like building new project again, LLMs proved to be very helpful to get started with comparatively new frameworks like streamlit and fastapi and helped in generating good amount of boilerplate code easily. At first, I was simply amazed and understood why there is a craze for AI assisted coding.
+* This is my first major personal project, where I've used LLM models extensively while coding. I was really surprised, how much LLM can help us get it done within a short period of time. In professional setting, I've mainly worked with `elixir` and `golang` based tech stack and mostly worked on the backend side of things that involved heavy usage of postgres/redis/kubernetes. I didn't get chance to work on python based stack so far in professional setting. I have used python based stack for my personal projects and I haven't started any greenfield project in it for a long time. So, I wasn't aware of latest trends in python web frameworks. But despite  of all these, when I felt like building new project again, LLMs proved to be very helpful to get started with comparatively new frameworks like streamlit and fastapi and helped in generating good amount of boilerplate code easily. At first, I was simply amazed and understood why there is a craze for AI assisted coding.
 
 * When I wanted to add some basic auth to streamlit app, LLM helped in generating some basic code within an hour. I thought, my work has become simpler and started day-dreaming how much time I can save with LLMs if used for coding regularly. But then in the next hour, I came back to ground reality. The generated code and the approach suggested by the LLM had so many subtle bugs - which were difficult to pin-point in the beginning.
 
