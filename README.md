@@ -52,7 +52,11 @@ $ ollama pull deepseek-r1:1.5b
 $ ollama serve
 ```
 
-### Install and run backend server and frontend chat interface*
+### Install and run backend server and frontend chat interface
+
+* Inquisitive is tested with Python 3.11, 3.12 and 3.13. Make sure any of the python version >= 3.11 is  available on the system.
+
+* On some systems people may need to install `python-venv` package separately. Please install appopriate package on your distro/os as needed.
 
 ```
 $ python3.11 -m venv venv
