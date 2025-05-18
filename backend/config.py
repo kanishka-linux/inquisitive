@@ -27,8 +27,11 @@ def get_env_file_path():
 # by specifying env variables or adding variables in backend.env.
 # However, if we decide to override default directory locations
 # then we need to make sure that one needs to create
-# all the relevant directories and sub-directories
-# manually
+# all the relevant directories and sub-directories manually.
+# inquisitive -> uploads
+# inquisitive -> logs
+# inquisitive -> inquisitive.db
+# inquisitive -> lance_db
 class Settings(BaseSettings):
     # BASIC SERVER SETTINGS
     SERVER_HOST: str = "0.0.0.0"
@@ -48,6 +51,12 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = os.path.join(BASE_DIR, "uploads")
     UPLOAD_DIR_PATH: Path = Path(UPLOAD_DIR)
     UPLOAD_DIR_PATH.mkdir(exist_ok=True)
+
+    LOGS_DIR: str = os.path.join(BASE_DIR, "logs")
+    LOGS_DIR_PATH: Path = Path(LOGS_DIR)
+    LOGS_DIR_PATH.mkdir(exist_ok=True)
+
+    LOG_FILE_NAME: str = os.path.join(LOGS_DIR, "backend.log")
 
     LINKS_JOB_QUEUE_CONCURRENCY: int = 100
     FILES_JOB_QUEUE_CONCURRENCY: int = 50
@@ -94,6 +103,10 @@ class Settings(BaseSettings):
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.5"
     }
+
+    LOGGER_NAME: str = "inquisitive_backend"
+    LOG_FORMAT: str = "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>"
+    LOG_LEVEL: str = "INFO"
 
     class Config:
         env_file = get_env_file_path()

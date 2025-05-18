@@ -2,19 +2,20 @@
 
 import logging
 import sys
-from pathlib import Path
 from loguru import logger
 from pydantic import BaseModel
 from typing import Dict, Any
+from backend.config import settings
 
 # Configuration for loguru
 
 
 class LogConfig(BaseModel):
     """Logging configuration"""
-    LOGGER_NAME: str = "fastapi_app"
-    LOG_FORMAT: str = "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>"
-    LOG_LEVEL: str = "INFO"
+    LOGGER_NAME: str = settings.LOGGER_NAME
+    LOG_FORMAT: str = settings.LOG_FORMAT
+    LOG_LEVEL: str = settings.LOG_LEVEL
+    LOG_FILE_NAME: str = settings.LOG_FILE_NAME
 
     # Logging config
     version: int = 1
@@ -37,7 +38,7 @@ class LogConfig(BaseModel):
         "file": {
             "formatter": "default",
             "class": "logging.handlers.RotatingFileHandler",
-            "filename": "logs/app.log",
+            "filename": settings.LOG_FILE_NAME,
             "maxBytes": 10485760,  # 10MB
             "backupCount": 5,
         },
@@ -61,12 +62,7 @@ class LogConfig(BaseModel):
     }
 
 
-# Create logs directory if it doesn't exist
-Path("logs").mkdir(exist_ok=True)
-
 # Setup logging configuration
-
-
 def setup_logging():
     """Configure logging"""
     config = LogConfig()
@@ -84,7 +80,7 @@ def setup_logging():
                 "level": config.LOG_LEVEL,
             },
             {
-                "sink": "logs/app.log",
+                "sink": config.LOG_FILE_NAME,
                 "format": config.LOG_FORMAT,
                 "level": config.LOG_LEVEL,
                 "rotation": "10 MB",
@@ -96,9 +92,8 @@ def setup_logging():
 
     return logger
 
+
 # Create a function to get logger
-
-
 def get_logger(name: str = None):
     """Get logger with the given name"""
-    return logging.getLogger(name or "fastapi_app")
+    return logging.getLogger(name or settings.LOGGER_NAME)
