@@ -249,7 +249,7 @@ Question: {query}
 Answer: """
 
     async def get_llm_response(self, prompt: str, context: str = None, context_aware: bool = True) -> AsyncGenerator[str, None]:
-        """Get streaming response from Mistral"""
+        """Get streaming response from LLM  model"""
         try:
             client = ollama.AsyncClient()
 
@@ -328,7 +328,7 @@ Answer: """
     def display_references(self, index=0):
         docs = st.session_state.prompt_with_docs.get("docs", [])
 
-        if docs:
+        if st.session_state.discussion_mode in ["context-aware", "only-links"] and docs:
             context = "\n\n".join(
                 [doc["page_content"] for doc in docs])
             # Prepare references for sidebar
