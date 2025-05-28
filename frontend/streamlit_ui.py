@@ -508,7 +508,7 @@ Answer: """
                 elif content_type.startswith("image/"):
                     self.qna_tab.container(border=True).image(content)
 
-                elif content_type == "text/markdown":
+                elif content_type in ["application/x-sh", "text/markdown"]:
                     try:
 
                         markdown_text = content.decode(
