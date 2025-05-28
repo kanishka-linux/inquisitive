@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     SERVER_PORT: int = 8000
     SERVER_LOG_LEVEL: str = "debug"
 
+    OLLAMA_HOST: str = "http://0.0.0.0:11434"
+
     # BASIC DIRECTORY CREATION
     HOME_DIR: str = os.path.expanduser("~")
     CONFIG_DIR: str = os.path.join(HOME_DIR, ".config")

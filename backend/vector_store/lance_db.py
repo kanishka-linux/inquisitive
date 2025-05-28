@@ -19,7 +19,8 @@ import pyarrow as pa
 logger = get_logger()
 
 # Initialize embeddings
-embeddings = OllamaEmbeddings(model=settings.EMBEDDINGS_MODEL)
+embeddings = OllamaEmbeddings(
+    model=settings.EMBEDDINGS_MODEL, base_url=settings.OLLAMA_HOST)
 
 # Initialize LanceDB
 db = lancedb.connect(settings.LANCE_DB_VECTOR_STORE_PERSISTS_DIRECTOY)
