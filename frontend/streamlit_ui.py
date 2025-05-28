@@ -251,7 +251,7 @@ Answer: """
     async def get_llm_response(self, prompt: str, context: str = None, context_aware: bool = True) -> AsyncGenerator[str, None]:
         """Get streaming response from LLM  model"""
         try:
-            client = ollama.AsyncClient()
+            client = ollama.AsyncClient(host=settings.OLLAMA_HOST)
 
             # Create system message to enforce context-based answering
             system_message_focused = {
@@ -541,7 +541,8 @@ Answer: """
 
     def get_ollama_models(self):
         try:
-            models = [i.model for i in ollama.list().models]
+            client = ollama.Client(host=settings.OLLAMA_HOST)
+            models = [i.model for i in client.list().models]
             return models
         except Exception as e:
             st.error(f"Error connecting to Ollama: {str(e)}")

@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     SERVER_PORT: int = 8501
     SERVER_HOST: str = "0.0.0.0"
 
+    OLLAMA_HOST: str = "http://0.0.0.0:11434"
+
     # FastAPI Backend URL (http://{HOST}:{PORT})
     API_URL: str = "http://localhost:8000"
     LIST_PAGE_SIZE: int = 5
