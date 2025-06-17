@@ -31,6 +31,7 @@ from frontend.utils import (
 )
 
 from frontend.config import settings
+from frontend.streamlit_component.easymde import easy_mde
 
 SVG_ICON = """
 <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
@@ -904,11 +905,19 @@ Answer: """
         filename = file_url.rsplit("/")[-1]
         content = fetch_file(file_url)
         with self.main_content:
-            updated_content = self.main_content.text_area(
-                f"Edit {filename} in markdown format:",
-                value=content,
-                height=600
-            )
+            if settings.DEFAULT_EDITOR == "easymde":
+                updated_content = easy_mde(
+                    key=filename,
+                    value=content,
+                    height=500
+                )
+            else:
+                updated_content = self.main_content.text_area(
+                    f"Edit {filename} in markdown format:",
+                    value=content,
+                    height=600
+                )
+
             cols = self.main_content.columns([1, 1, 2, 2])
             if cols[0].button(
                     "← Notes",
@@ -1122,8 +1131,8 @@ Answer: """
             st.session_state.updated_note_content = None
 
         if (st.session_state.view_mode in ["notes-list", "links-list", "files-list"]
-                or st.session_state.list_page_number_modified
-            ):
+                    or st.session_state.list_page_number_modified
+                ):
             st.session_state.list_page_number_modified = False
             if st.session_state.view_mode == "notes-list":
                 self.display_notes()

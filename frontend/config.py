@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     API_URL: str = "http://localhost:8000"
     LIST_PAGE_SIZE: int = 5
     ALLOW_AUTO_USER_REGISTER: bool = True
+    # default editors - streamlit_default, easymde
+    DEFAULT_EDITOR: str = "easymde"
     UPLOAD_FILE_TYPES: list[str] = ['txt', 'pdf', "md", "json", "sh"]
     DEFAULT_HEADERS: Dict[str, str] = {
         "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0",
