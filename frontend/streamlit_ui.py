@@ -909,7 +909,7 @@ Answer: """
                 updated_content = easy_mde(
                     key=filename,
                     value=content,
-                    height=500
+                    height=600
                 )
             else:
                 updated_content = self.main_content.text_area(
