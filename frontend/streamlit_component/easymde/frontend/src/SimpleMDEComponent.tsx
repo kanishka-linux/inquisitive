@@ -31,7 +31,7 @@ const SimpleMDEComponent: React.FC<ComponentProps<SimpleMDEProps>> = (props) => 
         z-index: 10;
         background: white;
         border: 1px solid #ccc;
-        border-bottom: none;
+        border-bottom: 1px solid #ccc;;
         border-top-left-radius: 4px;
         border-top-right-radius: 4px;
         opacity: 1 !important;
@@ -137,11 +137,23 @@ const SimpleMDEComponent: React.FC<ComponentProps<SimpleMDEProps>> = (props) => 
             autofocus: true,
             spellChecker: false,
             toolbar: [
-              "bold", "italic", "heading", "|", 
-              "quote", "unordered-list",
-              "ordered-list", "|", "code", "|",
-              "link", "image", "|", "table", 
-              "preview", "side-by-side", "fullscreen", "|",
+              "bold",
+              "italic",
+              "strikethrough",
+              "heading", "|", 
+              "quote",
+              "code",
+              "clean-block", "|",
+              "unordered-list",
+              "ordered-list", "|",
+              "link",
+              "image", "|",
+              "table", "|",
+              "undo",
+              "redo", "|",
+              "preview",
+              "side-by-side",
+              "fullscreen", "|",
               "guide"
             ],
             status: ["lines", "words"],
