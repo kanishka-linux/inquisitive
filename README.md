@@ -6,6 +6,8 @@
 
 ![Inquisitive](/images/inquisitive-screenshot.png)
 
+![Inquisitive](/images/inquisitive-markdown-editor.png)
+
 ## Features
 
 * Upload files of various formats and store them in vector database for Retrieval-Augmented Generation (RAG)
@@ -223,6 +225,8 @@ In the beginning, I wanted something simpler which could be built over a weekend
 * **Web Links** - I fed thousands of links to Inquisitive (from my bookmark) which I've accumulated over the years. One can just export your browser bookmark in json or any format or just dump list of links in plain text format and give it to inquisitive. It will do regex and find all relevant http links from the documents. I was quite a bit surprised to find that, after using inquisitive with focussed search mode for links i.e. `/links`, I was able to get some really good recommendations from my personal collection which I might have forgotten over a period of time. And I didn't even feel like adding tags or anything extra to extract relevant results. It seems like one can even build personal search engine, in case one has lots of links in the bookmark.
 
 * **Adding notes** - After feeding my notes to Inquisitive, retrieving relevant information was quick enough  (`/notes`). It is still early to comment about this feature. But having the ability to see notes in markdown and edit it and refresh the updated data in vector db on edit, seeing all the reference notes in the sidebar - made things lot more convenient when it came to searching and organizing notes. My only gripe is, not so good editor for markdwon. Currently I'm using Streamlit's in-built text-area component for adding notes, which could have been better.
+
+    * Edit: Added experimental support for mardkown editor based on [easymde](https://github.com/Ionaru/easy-markdown-editor)
 
 * **Discussion/QnA session with LLM**  - Quality of this depends a lot upon the model. Models with 7B+ parameter give really good result provided the machine has dedicated gpu. For machines with only cpu, models with 1-2B+ parameters can give response a bit quickly, but they are mostly irrelevant and not upto the mark and too much hallucination. So machines with only CPU, can use Inquisitive mainly for organizing the knowledge-base and searching efficiently within it, but not for relevant discussion/QnA purpose. People can try out multiple models and see what works for them best. I tried using LLM with following different setup.
 
