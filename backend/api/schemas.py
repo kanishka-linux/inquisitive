@@ -137,6 +137,11 @@ class NoteUpdateResponse(schemas.BaseModel):
     updated: bool
 
 
+class NoteBulkSyncResponse(schemas.BaseModel):
+    count: int
+    updated: bool
+
+
 class NoteCreateResponse(schemas.BaseModel):
     id: int
     url: str

@@ -8,7 +8,7 @@ from fastapi import (
     status
 )
 from fastapi.responses import FileResponse
-from sqlalchemy import select, desc, func, delete
+from sqlalchemy import select, desc, func, delete, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.dependencies import (
@@ -56,7 +56,8 @@ from backend.api.schemas import (
     LinksList,
     FilesList,
     FilePollingResponse,
-    ResourceDeletedResponse
+    ResourceDeletedResponse,
+    NoteBulkSyncResponse
 )
 from backend.api.service import validate_jwt_token
 from backend.database import get_async_session
@@ -426,6 +427,53 @@ async def update_note(
 
     return NoteUpdateResponse(
         filename=note_record.filename,
+        updated=True
+    )
+
+# re-sync all notes belonging to the user
+
+
+@file_router.put(
+    "/note/sync",
+    response_model=NoteBulkSyncResponse,
+    status_code=200)
+async def sync_notes(
+    user: User = Depends(current_active_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+
+    await session.execute(
+        update(Note)
+        .where(Note.user_id == user.id)
+        .values({"status": ProcessingStatus.PENDING})
+    )
+
+    result = await session.execute(
+        select(Note)
+        .where(Note.user_id == user.id)
+    )
+    note_records = result.scalars().all()
+
+    for note in note_records:
+        vector_store.remove_documents(
+            note.filename,
+            user.email
+        )
+
+    for note_record in note_records:
+        await file_processor_queue.put(
+            (
+                note_record.file_path,
+                note_record.filename,
+                note_record.url,
+                note_record.id,
+                user.email,
+                "note"
+            )
+        )
+
+    return NoteBulkSyncResponse(
+        count=len(note_records),
         updated=True
     )
 
