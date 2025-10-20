@@ -27,7 +27,8 @@ from frontend.utils import (
     fetch_file_status,
     delete_note,
     delete_link,
-    delete_file
+    delete_file,
+    sync_notes
 )
 
 from frontend.config import settings
@@ -1108,6 +1109,13 @@ Answer: """
                 st.session_state.view_mode = "links-list"
             elif prompt.startswith("/files-list"):
                 st.session_state.view_mode = "files-list"
+            elif prompt.startswith("/notes-sync"):
+                result = sync_notes()
+                with self.main_content.chat_message("assistant"):
+                    message_placeholder = st.empty()
+                    self.qna_tab.container().empty()
+                    full_response = f"Total notes updated {result['count']}"
+                    message_placeholder.markdown(full_response)
             else:
                 st.session_state.view_mode = "ollama-chat"
                 prompt = self.set_source_type(prompt)

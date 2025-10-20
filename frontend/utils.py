@@ -328,6 +328,27 @@ def fetch_files(skip=0, limit=100):
     return result
 
 
+def sync_notes():
+    headers = {
+        "Authorization": f"Bearer {st.session_state.token}",
+        "Content-Type": "application/json"
+    }
+
+    response = requests.put(
+        f"{settings.API_URL}/file/note/sync",
+        headers=headers,
+        json={}
+    )
+
+    result = {"count": 0, "updated": False}
+    if response.status_code == 200:
+        result = response.json()
+    else:
+        result
+
+    return result
+
+
 def fetch_file(file_url):
     headers = {
         "Authorization": f"Bearer {st.session_state.token}"
