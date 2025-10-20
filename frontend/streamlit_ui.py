@@ -85,6 +85,12 @@ TIPS = """
 * `/links-list`
 
 * `/files-list`
+
+### Syncing notes manually
+
+This is useful when editing notes directly from some other external editor
+
+* `/notes-sync`
 """
 
 
